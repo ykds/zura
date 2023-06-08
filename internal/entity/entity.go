@@ -1,41 +1,51 @@
 package entity
 
 import (
-	"sync"
-	"zira/internal/config"
-	"zira/internal/entity/user"
-	"zira/pkg/db"
+	"time"
+	"zura/pkg/cache"
+	"zura/pkg/db"
+
+	"gorm.io/gorm"
 )
 
 var (
-	database *db.Database
-	once sync.Once
 	entity *Entity
 )
 
-var Tables = []interface{}{
-	user.User{}, user.Friends{}, user.RecentContacts{},
+type BaseModel struct {
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	DeletedAt gorm.DeletedAt `gorm:"index"`
 }
 
-func GetDB() *db.Database {
-	once.Do(func() {
-		database = db.New(db.WithConfig(&config.GetConfig().Database))
-	})
-	return database
+var tables = []interface{}{
+	User{}, Friends{}, RecentContacts{},
 }
 
-func MigrateTable() error {
-	return database.AutoMigrate(Tables...)
+func migrateTable(d *db.Database) error {
+	return d.AutoMigrate(tables...)
 }
 
 type Entity struct {
-}
-
-func NewEntity() error {
-	entity = &Entity{}
-	return nil
+	UserEntity           UserEntity
+	FriendEntity         FriendEntity
+	RecentContactsEntity RecentContactsEntity
 }
 
 func GetEntity() *Entity {
+	if entity == nil {
+		panic("never init entity")
+	}
 	return entity
+}
+
+func NewEntity(database *db.Database, cache *cache.Redis) {
+	if err := migrateTable(database); err != nil {
+		panic(err)
+	}
+	entity = &Entity{
+		UserEntity:           NewUserEntity(database),
+		FriendEntity:         NewFriendEntity(database),
+		RecentContactsEntity: NewRecentContactsEntity(database),
+	}
 }

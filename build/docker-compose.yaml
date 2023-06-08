@@ -1,0 +1,39 @@
+version: "3"
+
+services:
+  nginx:
+    image: nginx
+    ports:
+      - 80:80
+    networks:
+      - zura
+  mysql:
+    image: mysql:8.0
+    ports: 
+      - 3306:3306
+    command: 
+      --default-authentication-plugin=mysql_native_password
+    environment:
+      - MYSQL_ROOT_PASSWORD=zura123456
+      - TZ=Asia/Shanghai
+    networks:
+      - zura
+  redis:
+    image: redis:6
+    ports:
+      - 6379:6379
+    networks:
+      - zura
+  # zura:
+  #   contaner_name: zura:latest
+  #   ports:
+  #     - 8000
+  #   depends_on:
+  #     - mysql
+  #     - redis
+  #   networks:
+  #     - zura
+  
+networks:
+  zura:
+  

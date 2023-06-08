@@ -1,0 +1,18 @@
+server:
+  debug: true
+
+database:
+  driver: "mysql"
+  host: "127.0.0.1"
+  port: "3306"
+  username: "root"
+  password: "zura123456"
+  db_name: "zura"
+
+log:
+  level: info
+  filename: "./log/zura.log"
+  max_age: 7
+  max_size: 10
+  max_backups: 5
+  compress: false
