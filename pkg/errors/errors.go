@@ -53,6 +53,10 @@ func WithStack(err error) error {
 	return errors.WithStack(err)
 }
 
+func WithStackByCode(status int) error {
+	return errors.WithStack(New(status))
+}
+
 func WithMessage(err error, message string) error {
 	return errors.WithMessage(err, message)
 }

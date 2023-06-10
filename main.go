@@ -6,14 +6,15 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"zura/internal/config"
-	"zura/internal/entity"
-	"zura/internal/server"
-	"zura/internal/services"
+	"zura/internal/logic/config"
+	"zura/internal/logic/entity"
+	"zura/internal/logic/server"
+	"zura/internal/logic/services"
 	"zura/pkg/cache"
 	"zura/pkg/db"
 	"zura/pkg/log"
 	"zura/pkg/log/zap"
+	"zura/pkg/snowflake"
 )
 
 var configPath = flag.String("conf", "./config.yaml", "config file path")
@@ -22,8 +23,10 @@ func main() {
 	flag.Parse()
 	config.InitConfig(*configPath)
 
-	l := zap.NewLogger(&config.GetConfig().Log, 
-		zap.WithDebug(config.GetConfig().Server.Debug), 
+	snowflake.InitSnowflake()
+
+	l := zap.NewLogger(&config.GetConfig().Log,
+		zap.WithDebug(config.GetConfig().Server.Debug),
 		zap.WithLumberjack())
 	log.SetGlobalLogger(l)
 
@@ -34,9 +37,9 @@ func main() {
 	entity.NewEntity(database, cache)
 	services.NewServices(cache, entity.GetEntity())
 
-	httpServer := server.NewHttpServer(ctx, 
-		server.WithConfig(config.GetConfig().HttpServer), 
-		server.WithLogger(l), 
+	httpServer := server.NewHttpServer(ctx,
+		server.WithConfig(config.GetConfig().HttpServer),
+		server.WithLogger(l),
 		server.WithDebug(config.GetConfig().Server.Debug))
 	httpServer.Run()
 	log.Info("server started.")

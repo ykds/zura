@@ -41,5 +41,6 @@ func GetCode(status int) Code {
 	if c, ok := codeMap[status]; ok {
 		return c
 	}
-	return Code{}
+	log.Printf("Code(%d)未定义", status)
+	return codeMap[InternalErrorStatus]
 }

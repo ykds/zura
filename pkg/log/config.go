@@ -12,7 +12,7 @@ type Config struct {
 func DefaultConfig() Config {
 	return Config{
 		Level:      DebugLevel,
-		Filename:   "./log/zura.log",
+		Filename:   "./logs/zura.log",
 		MaxAge:     7,
 		MaxSize:    10,
 		MaxBackups: 5,

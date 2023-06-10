@@ -9,4 +9,6 @@ FROM alpine
 WORKDIR /app
 COPY --from=builder /app/zura /app/zura
 COPY ./config.yaml /app/config.yaml
+RUN mkdir /app/logs
+RUN mkdir /app/static
 ENTRYPOINT ["app/zura"]

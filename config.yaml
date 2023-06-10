@@ -11,7 +11,7 @@ database:
 
 log:
   level: info
-  filename: "./log/zura.log"
+  filename: "./logs/zura.log"
   max_age: 7
   max_size: 10
   max_backups: 5
