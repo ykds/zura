@@ -31,11 +31,12 @@ type Service struct {
 
 func NewServices(cache *cache.Redis, entities *entity.Entity) {
 	verifyCodeService := verify_code.NewVerifyCodeService(cache)
+	friendService := friends.NewFriendsService(entities.FriendEntity, entities.UserEntity)
 	services = &Service{
 		UserService:            user.NewUserService(entities.UserEntity, verifyCodeService),
-		FriendsService:         friends.NewFriendsService(entities.FriendEntity, entities.UserEntity),
+		FriendsService:         friendService,
 		FriendApplymentService: friend_applyment.NewFriendApplymentService(entities.FriendApplymentEntity, entities.FriendEntity),
-		SessionService:         session.NewSessionService(entities.SessionEntity),
+		SessionService:         session.NewSessionService(entities.SessionEntity, friendService),
 		VerifyCodeService:      verify_code.NewVerifyCodeService(cache),
 	}
 }

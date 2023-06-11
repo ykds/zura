@@ -2,6 +2,7 @@ package friend_applyment
 
 import (
 	"strconv"
+	"zura/internal/logic/codec"
 	"zura/internal/logic/common"
 	"zura/internal/logic/services"
 	"zura/internal/logic/services/friend_applyment"
@@ -23,11 +24,16 @@ func Apply(c *gin.Context) {
 		err = errors.WithMessage(errors.New(errors.ParameterErrorStatus), err.Error())
 		return
 	}
-	if req.User1Id == 0 || req.User2Id == 0 {
+	if req.UserId == 0 {
 		err = errors.WithMessage(errors.New(errors.ParameterErrorStatus), err.Error())
 		return
 	}
-	err = services.GetServices().FriendApplymentService.ApplyFriend(req)
+	userId := c.GetInt64(common.UserIdKey)
+	if req.UserId == userId {
+		err = errors.New(codec.ApplyMySelfErrorCode)
+		return
+	}
+	err = services.GetServices().FriendApplymentService.ApplyFriend(userId, req)
 }
 
 func ListApplyments(c *gin.Context) {
@@ -71,7 +77,7 @@ func UpdateApplymentStatus(c *gin.Context) {
 	if err != nil {
 		return
 	}
-	err = services.GetServices().FriendApplymentService.UpdateApplymentStatus(id, req.Status)
+	err = services.GetServices().FriendApplymentService.UpdateApplymentStatus(c.GetInt64(common.UserIdKey), id, req.Status)
 }
 
 func DeleteApplyment(c *gin.Context) {

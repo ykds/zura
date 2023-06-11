@@ -4,14 +4,16 @@ import (
 	"strconv"
 	"zura/internal/logic/codec"
 	"zura/internal/logic/entity"
+	"zura/internal/logic/services/friends"
 	"zura/pkg/errors"
 
 	"gorm.io/gorm"
 )
 
-func NewSessionService(sessionEntity entity.SessionEntity) SessionService {
+func NewSessionService(sessionEntity entity.SessionEntity, friendsService friends.FriendsService) SessionService {
 	return &sessionService{
-		sessionEntity: sessionEntity,
+		sessionEntity:  sessionEntity,
+		friendsService: friendsService,
 	}
 }
 
@@ -37,18 +39,20 @@ type CreateGroupRequest struct {
 type SessionService interface {
 	OpenSession(openId, friendId int64) (SessionInfo, error)
 	ListSession(userId int64) ([]SessionInfo, error)
-	DeleteSession(id int64) error
+	DeleteSession(userId int64, sessionId int64) error
 
 	CreateGroupSession(userId int64, req CreateGroupRequest) (SessionInfo, error)
 	AddSessionMember(sessionId int64, userId ...int64) error
 	RemoveSessionMember(sessionId int64, userId int64) error
 	ChangeMemberRole(ownerId int64, sessionId int64, userId int64, role int8) error
+	DismissGroupSession(userId int64, sessionId int64) error
 
 	UpdateSessionSetting(id int64, ss entity.SessionSetting) error
 }
 
 type sessionService struct {
-	sessionEntity entity.SessionEntity
+	sessionEntity  entity.SessionEntity
+	friendsService friends.FriendsService
 }
 
 func (s *sessionService) CreateGroupSession(userId int64, req CreateGroupRequest) (SessionInfo, error) {
@@ -78,6 +82,16 @@ func (s *sessionService) CreateGroupSession(userId int64, req CreateGroupRequest
 }
 
 func (s *sessionService) OpenSession(openId, friendId int64) (SessionInfo, error) {
+	if openId == friendId {
+		return SessionInfo{}, errors.New(codec.OpenWithSelfErrCode)
+	}
+	ok, err := s.friendsService.IsFriend(openId, friendId)
+	if err != nil {
+		return SessionInfo{}, err
+	}
+	if !ok {
+		return SessionInfo{}, errors.New(codec.NotFriendCode)
+	}
 	session, err := s.sessionEntity.GetSessionByUserId(openId, friendId)
 	if err != nil {
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
@@ -120,49 +134,70 @@ func (s *sessionService) ListSession(userId int64) ([]SessionInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	sessionMap := make(map[int64]entity.Session)
-	sessionId := make([]int64, 0, len(session))
-	for _, se := range session {
-		sessionId = append(sessionId, se.ID)
-		sessionMap[se.ID] = se
-	}
 	infoMap := make(map[int64]SessionInfo)
+	for _, se := range session {
+		settings, err := s.sessionEntity.GetSessionSetting(se.ID, userId)
+		if err != nil {
+			return nil, err
+		}
+		if settings.IsDeleted {
+			continue
+		}
+		infoMap[se.ID] = SessionInfo{
+			ID:          se.ID,
+			SessionName: se.SessionName,
+			SessionType: se.SessionType,
+			Members:     make([]int64, 0),
+			Setting:     SessionSettingInfo{IsSticky: settings.IsSticky, IsDeleted: settings.IsDeleted},
+		}
+	}
+	if len(infoMap) == 0 {
+		return nil, nil
+	}
+
+	sessionId := make([]int64, 0, len(session))
+	for k := range infoMap {
+		sessionId = append(sessionId, k)
+	}
 	sms, err := s.sessionEntity.ListSessionMember(sessionId...)
 	if err != nil {
 		return nil, err
 	}
 	for _, sm := range sms {
-		info, ok := infoMap[sm.ID]
-		if !ok {
-			info = SessionInfo{
-				ID:          sm.ID,
-				SessionName: sessionMap[sm.ID].SessionName,
-				SessionType: sm.SessionType,
-				Members:     make([]int64, 0),
-			}
-		}
+		info := infoMap[sm.ID]
 		if sm.SessionType == entity.PointSession && sm.UserId != userId {
 			info.FriendId = userId
 		}
 		if sm.SessionType == entity.GroupSession {
 			info.Members = append(info.Members, sm.UserId)
 		}
-		infoMap[sm.ID] = info
+		infoMap[sm.SessionId] = info
 	}
 	infos := make([]SessionInfo, 0, len(infoMap))
 	for _, v := range infoMap {
-		settings, err := s.sessionEntity.GetSessionSetting(v.ID, userId)
-		if err != nil {
-			return nil, err
-		}
-		v.Setting = SessionSettingInfo{IsSticky: settings.IsSticky, IsDeleted: settings.IsDeleted}
 		infos = append(infos, v)
 	}
 	return infos, nil
 }
 
-func (s *sessionService) DeleteSession(id int64) error {
-	return s.sessionEntity.DeleteSession(id)
+func (s *sessionService) DeleteSession(userId int64, sessionId int64) error {
+	sf, err := s.sessionEntity.GetSessionSetting(sessionId, userId)
+	if err != nil {
+		return err
+	}
+	sf.IsDeleted = true
+	return s.UpdateSessionSetting(sf.ID, sf)
+}
+
+func (s *sessionService) DismissGroupSession(userId int64, sessionId int64) error {
+	ok, err := s.sessionEntity.JudgeSessionRole(sessionId, userId, entity.RoleOwner)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return errors.New(codec.NotPermitDismissGroupCode)
+	}
+	return s.DeleteSession(userId, sessionId)
 }
 
 func (s *sessionService) AddSessionMember(sessionId int64, userId ...int64) error {

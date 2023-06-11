@@ -21,13 +21,12 @@ const (
 )
 
 type FriendApplyment struct {
-	ID        int64  `json:"id" gorm:"primayKey"`
+	BaseModel
 	User1Id   int64  `json:"user1_id"`
 	User2Id   int64  `json:"user2_id"`
 	Markup    string `json:"markup"`
 	Status    int8   `json:"status"`
 	DeletedBy int8   `json:"deleted_by"`
-	BaseModel
 }
 
 func (f FriendApplyment) TableName() string {
@@ -58,7 +57,7 @@ type friendApplymentEntity struct {
 
 func (f *friendApplymentEntity) GetApplyment(user1Id int64, user2Id int64) (FriendApplyment, error) {
 	fa := FriendApplyment{}
-	err := f.db.First(&fa, "((user1_id=? AND user2_id=?) OR (user2_id=? AND user2_id=?)) AND stauts=?", user1Id, user2Id, user1Id, user2Id, Apply).Error
+	err := f.db.First(&fa, "((user1_id=? AND user2_id=?) OR (user2_id=? AND user2_id=?)) AND status=?", user1Id, user2Id, user1Id, user2Id, Apply).Error
 	if err != nil {
 		err = errors.WithStack(err)
 	}
@@ -67,7 +66,7 @@ func (f *friendApplymentEntity) GetApplyment(user1Id int64, user2Id int64) (Frie
 
 func (f *friendApplymentEntity) GetApplymentByID(id int64) (FriendApplyment, error) {
 	fa := FriendApplyment{}
-	err := f.db.First(&fa,"id=?", id).Error
+	err := f.db.First(&fa, "id=?", id).Error
 	if err != nil {
 		err = errors.WithStack(err)
 	}
@@ -87,7 +86,7 @@ func (f *friendApplymentEntity) UpdateApplymentStatus(id int64, status int8) err
 }
 
 func (f *friendApplymentEntity) UpdateApplymentStatusTx(tx *gorm.DB, id int64, status int8) error {
-	err := tx.Model(FriendApplyment{}).Where("id = ?", id).Update("status = ?", status).Error
+	err := tx.Model(FriendApplyment{}).Where("id = ?", id).Update("status", status).Error
 	if err != nil {
 		err = errors.WithStack(err)
 	}

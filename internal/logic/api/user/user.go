@@ -82,21 +82,27 @@ func GetUserInfo(c *gin.Context) {
 	}()
 	userId := c.GetInt64(common.UserIdKey)
 	resp, err = services.GetServices().UserService.GetUserInfo(userId)
-	avatarUrl := url.URL{
-		Scheme: "http",
-		Host:   c.Request.Host,
-		Path:   common.StaticPath + resp.Avatar,
+	if resp.Avatar != "" {
+		avatarUrl := url.URL{
+			Scheme: "http",
+			Host:   c.Request.Host,
+			Path:   common.StaticPath + resp.Avatar,
+		}
+		resp.Avatar = avatarUrl.String()
 	}
-	resp.Avatar = avatarUrl.String()
+
 }
 
 func UploadUserAvatar(c *gin.Context) {
 	var (
 		err  error
 		file *multipart.FileHeader
+		resp struct {
+			Url string `json:"url"`
+		}
 	)
 	defer func() {
-		response.HttpResponse(c, err, nil)
+		response.HttpResponse(c, err, resp)
 	}()
 	file, err = c.FormFile("file")
 	if err != nil {
@@ -108,4 +114,37 @@ func UploadUserAvatar(c *gin.Context) {
 	}
 	userId := c.GetInt64(common.UserIdKey)
 	err = services.GetServices().UserService.UpdateUserInfo(userId, user.UpdateUserInfoRequest{Avatar: file.Filename})
+	if err != nil {
+		return
+	}
+	resp.Url = (&url.URL{Scheme: "http", Host: c.Request.Host, Path: common.StaticPath + file.Filename}).String()
+}
+
+func SearchUser(c *gin.Context) {
+	var (
+		err  error
+		req  user.SearchUsersRequest
+		resp struct {
+			Data []user.OtherUserInfo `json:"data"`
+		}
+	)
+	defer func() {
+		if len(resp.Data) == 0 {
+			resp.Data = make([]user.OtherUserInfo, 0)
+		}
+		response.HttpResponse(c, err, resp)
+	}()
+	if err = c.BindQuery(&req); err != nil {
+		err = errors.WithMessage(errors.New(errors.ParameterErrorStatus), err.Error())
+		return
+	}
+	resp.Data, err = services.GetServices().UserService.SearchUser(req)
+	if err == nil {
+		for i, item := range resp.Data {
+			if item.Avatar == "" {
+				continue
+			}
+			resp.Data[i].Avatar = (&url.URL{Scheme: "http", Host: c.Request.Host, Path: item.Avatar}).String()
+		}
+	}
 }

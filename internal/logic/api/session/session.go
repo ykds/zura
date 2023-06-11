@@ -58,5 +58,5 @@ func DeleteSession(c *gin.Context) {
 	if err != nil {
 		return
 	}
-	err = services.GetServices().SessionService.DeleteSession(sessionId)
+	err = services.GetServices().SessionService.DeleteSession(c.GetInt64(common.UserIdKey), sessionId)
 }

@@ -18,10 +18,10 @@ const (
 )
 
 type Friends struct {
+	BaseModel
 	User1Id int64 `json:"user1_id" gorm:"uniqueIndex:ids"`
 	User2Id int64 `json:"user2_id" gorm:"uniqueIndex:ids"`
 	Status  int8  `json:"status"`
-	BaseModel
 }
 
 func (f Friends) TableName() string {
@@ -83,8 +83,7 @@ func (f *friendEntity) ListFriends(userId int64) ([]Friends, error) {
 
 func (f *friendEntity) IsFriend(user1Id int64, user2Id int64) (bool, error) {
 	fr := Friends{}
-	// TODO 测试不调用 First 是否可以
-	err := f.db.Where("((user1_id=? AND user2_id=?) OR (user2_id=? AND user1_id=?)) AND status=?", user1Id, user2Id, user1Id, user2Id, Normal).Select(1).First(&fr).Error
+	err := f.db.Where("((user1_id=? AND user2_id=?) OR (user2_id=? AND user1_id=?)) AND status=?", user1Id, user2Id, user1Id, user2Id, Normal).First(&fr).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return false, nil

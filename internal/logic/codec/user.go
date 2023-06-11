@@ -3,8 +3,7 @@ package codec
 import "zura/pkg/errors"
 
 const (
-	UnSupportedRegisterTypeStatus = iota + 200001
-	UnSupportedLoginTypeStatus
+	UnSupportedTypeStatus = iota + 200001
 	UserRegisterdStatus
 	PasswordNotConsistentStatus
 	VerifyStatusWrongStatus
@@ -18,8 +17,7 @@ const (
 )
 
 func init() {
-	errors.NewCode(UnSupportedRegisterTypeStatus, "不支持该注册方式")
-	errors.NewCode(UnSupportedLoginTypeStatus, "不支持该登录方式")
+	errors.NewCode(UnSupportedTypeStatus, "不支持该方式")
 	errors.NewCode(UserRegisterdStatus, "用户已注册")
 	errors.NewCode(PasswordNotConsistentStatus, "密码不一致")
 	errors.NewCode(VerifyStatusWrongStatus, "验证码错误")

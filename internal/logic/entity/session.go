@@ -129,9 +129,10 @@ func (r *sessionEntity) CreateSessionTx(tx *gorm.DB, session Session, createtor 
 				role = RoleOwner
 			}
 			members = append(members, SessionMember{
-				UserId:    id,
-				SessionId: session.ID,
-				Role:      role,
+				UserId:      id,
+				SessionId:   session.ID,
+				SessionType: session.SessionType,
+				Role:        role,
 			})
 		}
 		return t.Create(&members).Error
@@ -144,15 +145,15 @@ func (r *sessionEntity) CreateSessionTx(tx *gorm.DB, session Session, createtor 
 
 func (r *sessionEntity) DeleteSession(id int64) error {
 	err := r.db.Transaction(func(tx *gorm.DB) error {
-		err := r.db.Unscoped().Delete(Session{}, "id=?", id).Error
+		err := tx.Unscoped().Delete(Session{}, "id=?", id).Error
 		if err != nil {
 			return err
 		}
-		err = r.db.Unscoped().Delete(SessionMember{}, "session_id=?", id).Error
+		err = tx.Unscoped().Delete(SessionMember{}, "session_id=?", id).Error
 		if err != nil {
 			return err
 		}
-		return r.db.Unscoped().Delete(SessionSetting{}, "session_id=?", id).Error
+		return tx.Unscoped().Delete(SessionSetting{}, "session_id=?", id).Error
 	})
 	if err != nil {
 		return errors.WithStack(err)
@@ -171,7 +172,7 @@ func (r *sessionEntity) ListSession(userId int64) ([]Session, error) {
 	for _, member := range members {
 		sessionId = append(sessionId, member.SessionId)
 	}
-	err = r.db.Find(&rcList, "session_id IN ?", sessionId).Error
+	err = r.db.Find(&rcList, "id IN ?", sessionId).Error
 	if err != nil {
 		err = errors.WithStack(err)
 	}
@@ -227,10 +228,10 @@ func (r *sessionEntity) ChangeMemberRole(sessionId int64, userId int64, role int
 	var err error
 	if role == RoleOwner {
 		err = r.db.Transaction(func(tx *gorm.DB) error {
-			if err := r.db.Where("session_id = ? AND role=?", sessionId, RoleOwner).Update("role", RoleMember).Error; err != nil {
+			if err := tx.Where("session_id = ? AND role=?", sessionId, RoleOwner).Update("role", RoleMember).Error; err != nil {
 				return err
 			}
-			if err := r.db.Where("session_id = ? AND user_id=?", sessionId, userId).Update("role", RoleOwner).Error; err != nil {
+			if err := tx.Where("session_id = ? AND user_id=?", sessionId, userId).Update("role", RoleOwner).Error; err != nil {
 				return err
 			}
 			return nil

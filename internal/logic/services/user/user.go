@@ -32,7 +32,6 @@ type RegisterRequest struct {
 	Username        string `json:"username"`
 	Phone           string `json:"phone"`
 	Email           string `json:"email"`
-	Avatar          string `json:"avatar"`
 	Password        string `json:"password"`
 	ConfirmPassword string `json:"confirm_password"`
 	VerifyCode      string `json:"verify_code"`
@@ -64,6 +63,19 @@ type ChangePasswordRequest struct {
 	ConfirmPassword string `json:"confirm_password"`
 }
 
+type SearchUsersRequest struct {
+	SearchType string `form:"search_type"`
+	Username   string `form:"username"`
+	Phone      string `form:"phone"`
+	Email      string `form:"email"`
+}
+
+type OtherUserInfo struct {
+	UserId   int64  `json:"user_id"`
+	Username string `json:"username"`
+	Avatar   string `json:"avatar"`
+}
+
 type UserService interface {
 	Register(req RegisterRequest) error
 	Login(req LoginRequest) (LoginResponse, error)
@@ -71,11 +83,39 @@ type UserService interface {
 	GetUserInfo(userId int64) (entity.UserInfo, error)
 	UpdateUserInfo(userId int64, req UpdateUserInfoRequest) error
 	ChangePassword(userId int64, req ChangePasswordRequest) error
+	SearchUser(req SearchUsersRequest) ([]OtherUserInfo, error)
 }
 
 type userService struct {
 	userEntity        entity.UserEntity
 	verifyCodeService verify_code.VerifyCodeService
+}
+
+func (u *userService) SearchUser(req SearchUsersRequest) ([]OtherUserInfo, error) {
+	where := make(map[string]interface{})
+	switch req.SearchType {
+	case UsernameType:
+		where["username"] = req.Username
+	case PhoneType:
+		where["phone"] = req.Phone
+	case EmailType:
+		where["email"] = req.Email
+	default:
+		return nil, errors.WithStackByCode(codec.UnSupportedTypeStatus)
+	}
+	users, err := u.userEntity.ListUser(where)
+	if err != nil {
+		return nil, err
+	}
+	infos := make([]OtherUserInfo, 0)
+	for _, u := range users {
+		infos = append(infos, OtherUserInfo{
+			UserId:   u.ID,
+			Username: u.Username,
+			Avatar:   u.Avatar,
+		})
+	}
+	return infos, nil
 }
 
 func (u *userService) Register(req RegisterRequest) error {
@@ -92,7 +132,7 @@ func (u *userService) Register(req RegisterRequest) error {
 		where["username"] = req.Username
 		cacheKey = fmt.Sprintf(common.RegisterVerifyCodeKey, UsernameType, req.Username)
 	default:
-		return errors.New(codec.UnSupportedRegisterTypeStatus)
+		return errors.New(codec.UnSupportedTypeStatus)
 	}
 	_, err := u.userEntity.GetUser(where)
 	if err != nil {
@@ -129,7 +169,6 @@ func (u *userService) Register(req RegisterRequest) error {
 			Username: req.Username,
 			Phone:    req.Phone,
 			Email:    req.Email,
-			Avatar:   req.Avatar,
 		},
 	})
 	if err != nil {
@@ -148,7 +187,7 @@ func (u *userService) Login(req LoginRequest) (LoginResponse, error) {
 	case UsernameType:
 		where["username"] = req.Username
 	default:
-		return LoginResponse{}, errors.New(codec.UnSupportedLoginTypeStatus)
+		return LoginResponse{}, errors.New(codec.UnSupportedTypeStatus)
 	}
 	info, err := u.userEntity.GetUser(where)
 	if err != nil {
@@ -160,7 +199,7 @@ func (u *userService) Login(req LoginRequest) (LoginResponse, error) {
 	if !comparePassword(req.Password, info.Password, info.Salt) {
 		return LoginResponse{}, errors.New(codec.PasswordWrongStatus)
 	}
-	t, err := token.NewToken(info.UserId)
+	t, err := token.NewToken(info.ID)
 	if err != nil {
 		return LoginResponse{}, errors.WithStack(err)
 	}

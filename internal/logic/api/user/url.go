@@ -16,5 +16,6 @@ func RegisterUserRouter(r gin.IRouter) {
 	{
 		auth.GET("/info", GetUserInfo)
 		auth.POST("/upload", UploadUserAvatar)
+		auth.GET("/search", SearchUser)
 	}
 }

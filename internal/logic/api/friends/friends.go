@@ -1,6 +1,7 @@
 package friends
 
 import (
+	"net/url"
 	"zura/internal/logic/common"
 	"zura/internal/logic/services"
 	"zura/internal/logic/services/friends"
@@ -25,6 +26,14 @@ func ListFriends(c *gin.Context) {
 	}()
 	userId := c.GetInt64(common.UserIdKey)
 	resp.Data, err = services.GetServices().FriendsService.ListFriends(userId)
+	if err == nil {
+		for i, u := range resp.Data {
+			if u.Avatar == "" {
+				continue
+			}
+			resp.Data[i].Avatar = (&url.URL{Scheme: "http", Host: c.Request.Host, Path: u.Avatar}).String()
+		}
+	}
 }
 
 func DeleteFriends(c *gin.Context) {

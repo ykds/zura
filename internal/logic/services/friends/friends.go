@@ -91,7 +91,7 @@ func (f *friendsService) ListFriends(userId int64) ([]FriendInfo, error) {
 	}
 	for _, u := range users {
 		fs = append(fs, FriendInfo{
-			UserId:   u.UserId,
+			UserId:   u.ID,
 			Username: u.Username,
 			Avatar:   u.Avatar,
 		})

@@ -14,10 +14,10 @@ var (
 )
 
 type BaseModel struct {
-	ID        int64 `json:"id" gorm:"primaryKey"`
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	DeletedAt gorm.DeletedAt `gorm:"index"`
+	ID        int64          `json:"id" gorm:"primaryKey"`
+	CreatedAt time.Time      `json:"-"`
+	UpdatedAt time.Time      `json:"-"`
+	DeletedAt gorm.DeletedAt `json:"-" gorm:"index"`
 }
 
 func (b *BaseModel) BeforeCreate(tx *gorm.DB) (err error) {
@@ -28,7 +28,7 @@ func (b *BaseModel) BeforeCreate(tx *gorm.DB) (err error) {
 }
 
 var tables = []interface{}{
-	User{}, Friends{}, Session{},
+	User{}, Friends{}, Session{}, FriendApplyment{}, SessionSetting{}, SessionMember{},
 }
 
 func migrateTable(d *db.Database) error {

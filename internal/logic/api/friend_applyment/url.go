@@ -7,11 +7,12 @@ import (
 )
 
 func RegisterFriendApplymentRouter(r gin.IRouter) {
-	group := r.Group("/friend_applyment", middleware.Auth())
+	group := r.Group("/friend-applyment", middleware.Auth())
+	v1 := group.Group("/v1")
 	{
-		group.POST("/apply", Apply)
-		group.GET("/list", ListApplyments)
-		group.PUT("/id/:id", UpdateApplymentStatus)
-		group.DELETE("/id/:id", DeleteApplyment)
+		v1.POST("/apply", Apply)
+		v1.GET("/list", ListApplyments)
+		v1.PUT("/id/:id", UpdateApplymentStatus)
+		v1.DELETE("/id/:id", DeleteApplyment)
 	}
 }
