@@ -2,14 +2,14 @@ package server
 
 import (
 	"context"
+	"github.com/ykds/zura/internal/common"
+	"github.com/ykds/zura/internal/logic/api/friend_application"
+	"github.com/ykds/zura/internal/logic/api/friends"
+	"github.com/ykds/zura/internal/logic/api/session"
+	"github.com/ykds/zura/internal/logic/api/user"
+	"github.com/ykds/zura/pkg/log"
 	"net/http"
 	"time"
-	"zura/internal/logic/api/friend_applyment"
-	"zura/internal/logic/api/friends"
-	"zura/internal/logic/api/session"
-	"zura/internal/logic/api/user"
-	"zura/internal/logic/common"
-	"zura/pkg/log"
 
 	"github.com/gin-gonic/gin"
 )
@@ -111,6 +111,6 @@ func loadRouters(r gin.IRouter) {
 	api := r.Group("/api")
 	user.RegisterUserRouter(api)
 	friends.RegisterFriendsRouter(api)
-	friend_applyment.RegisterFriendApplymentRouter(api)
+	friend_application.RegisterFriendApplicationRouter(api)
 	session.RegisterSessionRouter(api)
 }

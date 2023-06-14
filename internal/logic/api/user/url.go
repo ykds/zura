@@ -1,9 +1,8 @@
 package user
 
 import (
-	"zura/internal/logic/middleware"
-
 	"github.com/gin-gonic/gin"
+	"github.com/ykds/zura/internal/middleware"
 )
 
 func RegisterUserRouter(r gin.IRouter) {

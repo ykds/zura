@@ -19,6 +19,12 @@ func GetGlobalLogger() Logger {
 	return globalLogger
 }
 
+func Debug(args ...interface{}) {
+	globalLogger.Debug(args...)
+}
+func Debugf(format string, args ...interface{}) {
+	globalLogger.Debugf(format, args...)
+}
 func Info(args ...interface{}) {
 	globalLogger.Info(args...)
 }
@@ -52,6 +58,8 @@ func Fatalf(format string, args ...interface{}) {
 
 type Logger interface {
 	io.Writer
+	Debug(args ...interface{})
+	Debugf(format string, args ...interface{})
 	Info(args ...interface{})
 	Infof(format string, args ...interface{})
 	Warn(args ...interface{})

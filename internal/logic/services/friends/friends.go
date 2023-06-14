@@ -1,9 +1,9 @@
 package friends
 
 import (
-	"zura/internal/logic/codec"
-	"zura/internal/logic/entity"
-	"zura/pkg/errors"
+	"github.com/ykds/zura/internal/logic/codec"
+	"github.com/ykds/zura/internal/logic/entity"
+	"github.com/ykds/zura/pkg/errors"
 )
 
 func NewFriendsService(friendsEntity entity.FriendEntity, userEntity entity.UserEntity) FriendsService {

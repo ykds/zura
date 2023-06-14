@@ -1,18 +1,13 @@
 package config
 
 import (
-	"encoding/json"
-	"io/ioutil"
-	"strings"
-	"zura/internal/logic/server"
-	"zura/pkg/cache"
-	"zura/pkg/db"
-	"zura/pkg/log"
-
-	"gopkg.in/yaml.v2"
+	"github.com/ykds/zura/internal/logic/server"
+	"github.com/ykds/zura/pkg/cache"
+	"github.com/ykds/zura/pkg/db"
+	"github.com/ykds/zura/pkg/log"
 )
 
-var cfg *Config
+var cfg = DefaultConfig()
 
 type ServerConfig struct {
 	Debug bool `json:"debug" yaml:"debug"`
@@ -26,7 +21,7 @@ type Config struct {
 	HttpServer server.HttpServerConfig `json:"http_server" yaml:"http_server"`
 }
 
-func DefautConfig() *Config {
+func DefaultConfig() *Config {
 	return &Config{
 		Database:   db.DefaultConfig(),
 		Cache:      cache.DefaultConfig(),
@@ -36,28 +31,5 @@ func DefautConfig() *Config {
 }
 
 func GetConfig() *Config {
-	if cfg == nil {
-		panic("未初始化配置")
-	}
 	return cfg
-}
-
-func InitConfig(path string) {
-	cfg = DefautConfig()
-	b, err := ioutil.ReadFile(path)
-	if err != nil {
-		panic(err)
-	}
-	if strings.HasSuffix(path, ".json") {
-		err = json.Unmarshal(b, cfg)
-		if err != nil {
-			panic(err)
-		}
-	}
-	if strings.HasSuffix(path, ".yaml") {
-		err = yaml.Unmarshal(b, cfg)
-		if err != nil {
-			panic(err)
-		}
-	}
 }

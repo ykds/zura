@@ -1,8 +1,8 @@
 package entity
 
 import (
-	"zura/pkg/db"
-	"zura/pkg/errors"
+	"github.com/ykds/zura/pkg/db"
+	"github.com/ykds/zura/pkg/errors"
 )
 
 type User struct {

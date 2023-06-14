@@ -1,13 +1,14 @@
 package services
 
 import (
-	"zura/internal/logic/entity"
-	"zura/internal/logic/services/friend_applyment"
-	"zura/internal/logic/services/friends"
-	"zura/internal/logic/services/session"
-	"zura/internal/logic/services/user"
-	"zura/internal/logic/services/verify_code"
-	"zura/pkg/cache"
+	"github.com/ykds/zura/internal/logic/entity"
+	"github.com/ykds/zura/internal/logic/services/friend_application"
+	"github.com/ykds/zura/internal/logic/services/friends"
+	"github.com/ykds/zura/internal/logic/services/session"
+	"github.com/ykds/zura/internal/logic/services/user"
+	"github.com/ykds/zura/internal/logic/services/verify_code"
+	"github.com/ykds/zura/pkg/cache"
+	"github.com/ykds/zura/proto/comet"
 )
 
 var (
@@ -22,21 +23,21 @@ func GetServices() *Service {
 }
 
 type Service struct {
-	UserService            user.UserService
-	FriendsService         friends.FriendsService
-	FriendApplymentService friend_applyment.FriendApplymentService
-	SessionService         session.SessionService
-	VerifyCodeService      verify_code.VerifyCodeService
+	UserService              user.UserService
+	FriendsService           friends.FriendsService
+	FriendApplicationService friend_application.FriendApplicationService
+	SessionService           session.SessionService
+	VerifyCodeService        verify_code.VerifyCodeService
 }
 
-func NewServices(cache *cache.Redis, entities *entity.Entity) {
+func NewServices(cache *cache.Redis, entities *entity.Entity, cometClient comet.CometClient) {
 	verifyCodeService := verify_code.NewVerifyCodeService(cache)
 	friendService := friends.NewFriendsService(entities.FriendEntity, entities.UserEntity)
 	services = &Service{
-		UserService:            user.NewUserService(entities.UserEntity, verifyCodeService),
-		FriendsService:         friendService,
-		FriendApplymentService: friend_applyment.NewFriendApplymentService(entities.FriendApplymentEntity, entities.FriendEntity),
-		SessionService:         session.NewSessionService(entities.SessionEntity, friendService),
-		VerifyCodeService:      verify_code.NewVerifyCodeService(cache),
+		UserService:              user.NewUserService(cache, entities.UserEntity, verifyCodeService),
+		FriendsService:           friendService,
+		FriendApplicationService: friend_application.NewFriendApplicationService(entities.FriendApplicationEntity, entities.FriendEntity),
+		SessionService:           session.NewSessionService(entities.SessionEntity, friendService),
+		VerifyCodeService:        verify_code.NewVerifyCodeService(cache),
 	}
 }

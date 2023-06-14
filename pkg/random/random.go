@@ -6,9 +6,9 @@ import (
 )
 
 var (
-	strSeed    = []byte("qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM")
-	numSeed    = []byte("1234567890")
-	mixSeed    = append(strSeed, numSeed...)
+	strSeed = []byte("qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM")
+	numSeed = []byte("1234567890")
+	mixSeed = append(strSeed, numSeed...)
 )
 
 func RandStr(len int) string {

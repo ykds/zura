@@ -1,8 +1,8 @@
 package middleware
 
 import (
+	"zura/internal/common"
 	"zura/internal/logic/codec"
-	"zura/internal/logic/common"
 	"zura/pkg/errors"
 	"zura/pkg/response"
 	"zura/pkg/token"

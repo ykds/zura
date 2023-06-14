@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package logic;
+
+option go_package="github.com/ykds/zura/logic;logic";
+
+message ConnectionRequest {
+  int64 user_id = 1;
+}
+message ConnectionResponse {
+}
+
+message DisconnectRequest {
+  int64 user_id = 1;
+}
+
+message DisconnectResponse {}
+
+message HeartBeatRequest {
+  int64 user_id = 1;
+}
+
+message HeartBeatResponse {}
+
+service Logic {
+  rpc Connect(ConnectionRequest) returns (ConnectionResponse);
+  rpc Disconnect(DisconnectRequest) returns (DisconnectResponse);
+  rpc HeartBeat(HeartBeatRequest) returns (HeartBeatResponse);
+}

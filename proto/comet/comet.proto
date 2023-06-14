@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package comet;
+
+option go_package="github.com/ykds/zura/comet;comet";
+
+import "proto/message/message.proto";
+
+message PushMsgRequest {
+  msg.Message mess = 3;
+}
+
+message PushMsgResponse {}
+
+service Comet {
+  rpc PushMsg(PushMsgRequest) returns(PushMsgResponse);
+}

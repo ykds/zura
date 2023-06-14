@@ -1,13 +1,12 @@
 package session
 
 import (
-	"strconv"
-	"zura/internal/logic/codec"
-	"zura/internal/logic/entity"
-	"zura/internal/logic/services/friends"
-	"zura/pkg/errors"
-
+	"github.com/ykds/zura/internal/logic/codec"
+	"github.com/ykds/zura/internal/logic/entity"
+	"github.com/ykds/zura/internal/logic/services/friends"
+	"github.com/ykds/zura/pkg/errors"
 	"gorm.io/gorm"
+	"strconv"
 )
 
 func NewSessionService(sessionEntity entity.SessionEntity, friendsService friends.FriendsService) SessionService {

@@ -1,11 +1,10 @@
 package entity
 
 import (
-	"zura/internal/logic/codec"
-	"zura/pkg/db"
-	"zura/pkg/errors"
-	"zura/pkg/snowflake"
-
+	"github.com/ykds/zura/internal/logic/codec"
+	"github.com/ykds/zura/pkg/db"
+	"github.com/ykds/zura/pkg/errors"
+	"github.com/ykds/zura/pkg/snowflake"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )

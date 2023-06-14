@@ -1,9 +1,9 @@
 package zap
 
 import (
+	"github.com/ykds/zura/pkg/log"
 	"io"
 	"os"
-	"zura/pkg/log"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"

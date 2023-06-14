@@ -1,6 +1,6 @@
 package codec
 
-import "zura/pkg/errors"
+import "github.com/ykds/zura/pkg/errors"
 
 const (
 	NeedAuthStatus = iota + 100001

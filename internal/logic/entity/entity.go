@@ -1,10 +1,10 @@
 package entity
 
 import (
+	"github.com/ykds/zura/pkg/cache"
+	"github.com/ykds/zura/pkg/db"
+	"github.com/ykds/zura/pkg/snowflake"
 	"time"
-	"zura/pkg/cache"
-	"zura/pkg/db"
-	"zura/pkg/snowflake"
 
 	"gorm.io/gorm"
 )
@@ -20,7 +20,7 @@ type BaseModel struct {
 	DeletedAt gorm.DeletedAt `json:"-" gorm:"index"`
 }
 
-func (b *BaseModel) BeforeCreate(tx *gorm.DB) (err error) {
+func (b *BaseModel) BeforeCreate(_ *gorm.DB) (err error) {
 	if b.ID == 0 {
 		b.ID = snowflake.NewId()
 	}
@@ -28,7 +28,7 @@ func (b *BaseModel) BeforeCreate(tx *gorm.DB) (err error) {
 }
 
 var tables = []interface{}{
-	User{}, Friends{}, Session{}, FriendApplyment{}, SessionSetting{}, SessionMember{},
+	User{}, Friends{}, Session{}, FriendApplication{}, SessionSetting{}, SessionMember{},
 }
 
 func migrateTable(d *db.Database) error {
@@ -36,10 +36,10 @@ func migrateTable(d *db.Database) error {
 }
 
 type Entity struct {
-	UserEntity            UserEntity
-	FriendEntity          FriendEntity
-	FriendApplymentEntity FriendApplymentEntity
-	SessionEntity         SessionEntity
+	UserEntity              UserEntity
+	FriendEntity            FriendEntity
+	FriendApplicationEntity FriendApplicationEntity
+	SessionEntity           SessionEntity
 }
 
 func GetEntity() *Entity {
@@ -49,15 +49,15 @@ func GetEntity() *Entity {
 	return entity
 }
 
-func NewEntity(database *db.Database, cache *cache.Redis) {
+func NewEntity(database *db.Database, _ *cache.Redis) {
 	if err := migrateTable(database); err != nil {
 		panic(err)
 	}
 	entity = &Entity{
-		UserEntity:            NewUserEntity(database),
-		FriendEntity:          NewFriendEntity(database),
-		FriendApplymentEntity: NewFriendApplyment(database),
-		SessionEntity:         NewSessionEntity(database),
+		UserEntity:              NewUserEntity(database),
+		FriendEntity:            NewFriendEntity(database),
+		FriendApplicationEntity: NewFriendApplication(database),
+		SessionEntity:           NewSessionEntity(database),
 	}
 }
 

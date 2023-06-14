@@ -2,9 +2,9 @@ package verify_code
 
 import (
 	"context"
+	"github.com/ykds/zura/pkg/cache"
+	"github.com/ykds/zura/pkg/random"
 	"time"
-	"zura/pkg/cache"
-	"zura/pkg/random"
 )
 
 func NewVerifyCodeService(cache *cache.Redis) VerifyCodeService {

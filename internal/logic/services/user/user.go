@@ -1,17 +1,19 @@
 package user
 
 import (
+	"context"
 	"crypto/sha256"
 	"fmt"
-	"zura/internal/logic/codec"
-	"zura/internal/logic/common"
-	"zura/internal/logic/entity"
-	"zura/internal/logic/services/verify_code"
-	"zura/pkg/errors"
-	"zura/pkg/random"
-	"zura/pkg/token"
-
+	"github.com/ykds/zura/internal/common"
+	"github.com/ykds/zura/internal/logic/codec"
+	"github.com/ykds/zura/internal/logic/entity"
+	"github.com/ykds/zura/internal/logic/services/verify_code"
+	"github.com/ykds/zura/pkg/cache"
+	"github.com/ykds/zura/pkg/errors"
+	"github.com/ykds/zura/pkg/random"
+	"github.com/ykds/zura/pkg/token"
 	"gorm.io/gorm"
+	"time"
 )
 
 const (
@@ -20,8 +22,9 @@ const (
 	EmailType    = "email"
 )
 
-func NewUserService(userEntity entity.UserEntity, verifyCodeService verify_code.VerifyCodeService) UserService {
+func NewUserService(cache *cache.Redis, userEntity entity.UserEntity, verifyCodeService verify_code.VerifyCodeService) UserService {
 	return &userService{
+		cache:             cache,
 		userEntity:        userEntity,
 		verifyCodeService: verifyCodeService,
 	}
@@ -84,11 +87,34 @@ type UserService interface {
 	UpdateUserInfo(userId int64, req UpdateUserInfoRequest) error
 	ChangePassword(userId int64, req ChangePasswordRequest) error
 	SearchUser(req SearchUsersRequest) ([]OtherUserInfo, error)
+
+	Connect(ctx context.Context, userId int64) error
+	DisConnect(ctx context.Context, userId int64) error
+	HeartBeat(ctx context.Context, userId int64) error
 }
 
 type userService struct {
+	cache             *cache.Redis
 	userEntity        entity.UserEntity
 	verifyCodeService verify_code.VerifyCodeService
+}
+
+func (u *userService) Connect(ctx context.Context, userId int64) error {
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+	return u.cache.SetEx(ctx, fmt.Sprintf("CACHE_ONLINE_USER:%d", userId), "", time.Minute).Err()
+}
+
+func (u *userService) DisConnect(ctx context.Context, userId int64) error {
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+	return u.cache.Del(ctx, fmt.Sprintf("CACHE_ONLINE_USER:%d", userId)).Err()
+}
+
+func (u *userService) HeartBeat(ctx context.Context, userId int64) error {
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+	return u.cache.Expire(ctx, fmt.Sprintf("CACHE_ONLINE_USER:%d", userId), time.Minute).Err()
 }
 
 func (u *userService) SearchUser(req SearchUsersRequest) ([]OtherUserInfo, error) {

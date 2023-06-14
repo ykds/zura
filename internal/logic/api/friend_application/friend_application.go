@@ -1,13 +1,13 @@
-package friend_applyment
+package friend_application
 
 import (
+	"github.com/ykds/zura/internal/common"
+	"github.com/ykds/zura/internal/logic/codec"
+	"github.com/ykds/zura/internal/logic/services"
+	"github.com/ykds/zura/internal/logic/services/friend_application"
+	"github.com/ykds/zura/pkg/errors"
+	"github.com/ykds/zura/pkg/response"
 	"strconv"
-	"zura/internal/logic/codec"
-	"zura/internal/logic/common"
-	"zura/internal/logic/services"
-	"zura/internal/logic/services/friend_applyment"
-	"zura/pkg/errors"
-	"zura/pkg/response"
 
 	"github.com/gin-gonic/gin"
 )
@@ -15,7 +15,7 @@ import (
 func Apply(c *gin.Context) {
 	var (
 		err error
-		req friend_applyment.ApplyRequest
+		req friend_application.ApplyRequest
 	)
 	defer func() {
 		response.HttpResponse(c, err, nil)
@@ -33,27 +33,27 @@ func Apply(c *gin.Context) {
 		err = errors.New(codec.ApplyMySelfErrorCode)
 		return
 	}
-	err = services.GetServices().FriendApplymentService.ApplyFriend(userId, req)
+	err = services.GetServices().FriendApplicationService.ApplyFriend(userId, req)
 }
 
-func ListApplyments(c *gin.Context) {
+func ListApplications(c *gin.Context) {
 	var (
 		err  error
 		resp struct {
-			Data []friend_applyment.Applyment `json:"data"`
+			Data []friend_application.Application `json:"data"`
 		}
 	)
 	defer func() {
 		if len(resp.Data) == 0 {
-			resp.Data = []friend_applyment.Applyment{}
+			resp.Data = []friend_application.Application{}
 		}
 		response.HttpResponse(c, err, resp)
 	}()
 	userId := c.GetInt64(common.UserIdKey)
-	resp.Data, err = services.GetServices().FriendApplymentService.ListApplyments(userId)
+	resp.Data, err = services.GetServices().FriendApplicationService.ListApplications(userId)
 }
 
-func UpdateApplymentStatus(c *gin.Context) {
+func UpdateApplicationStatus(c *gin.Context) {
 	var (
 		err error
 		req struct {
@@ -77,10 +77,10 @@ func UpdateApplymentStatus(c *gin.Context) {
 	if err != nil {
 		return
 	}
-	err = services.GetServices().FriendApplymentService.UpdateApplymentStatus(c.GetInt64(common.UserIdKey), id, req.Status)
+	err = services.GetServices().FriendApplicationService.UpdateApplicationStatus(c.GetInt64(common.UserIdKey), id, req.Status)
 }
 
-func DeleteApplyment(c *gin.Context) {
+func DeleteApplication(c *gin.Context) {
 	var (
 		err error
 	)
@@ -98,5 +98,5 @@ func DeleteApplyment(c *gin.Context) {
 	if err != nil {
 		return
 	}
-	err = services.GetServices().FriendApplymentService.DeleteApplyment(id, userId)
+	err = services.GetServices().FriendApplicationService.DeleteApplication(id, userId)
 }

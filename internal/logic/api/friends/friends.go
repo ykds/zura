@@ -1,12 +1,12 @@
 package friends
 
 import (
+	"github.com/ykds/zura/internal/common"
+	"github.com/ykds/zura/internal/logic/services"
+	"github.com/ykds/zura/internal/logic/services/friends"
+	"github.com/ykds/zura/pkg/errors"
+	"github.com/ykds/zura/pkg/response"
 	"net/url"
-	"zura/internal/logic/common"
-	"zura/internal/logic/services"
-	"zura/internal/logic/services/friends"
-	"zura/pkg/errors"
-	"zura/pkg/response"
 
 	"github.com/gin-gonic/gin"
 )

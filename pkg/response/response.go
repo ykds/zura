@@ -1,9 +1,9 @@
 package response
 
 import (
+	"github.com/ykds/zura/pkg/errors"
+	"github.com/ykds/zura/pkg/log"
 	"net/http"
-	"zura/pkg/errors"
-	"zura/pkg/log"
 
 	"github.com/gin-gonic/gin"
 )
