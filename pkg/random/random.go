@@ -28,8 +28,8 @@ func random(seed []byte, length int) string {
 	str := ""
 	bigInt := big.NewInt(int64(len(seed)))
 	for i := 0; i < length; i++ {
-		i, _ := rand.Int(rand.Reader, bigInt)
-		str += string(seed[i.Int64()])
+		index, _ := rand.Int(rand.Reader, bigInt)
+		str += string(seed[index.Int64()])
 	}
 	return str
 }
