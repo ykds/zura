@@ -14,7 +14,7 @@ func RegisterUserRouter(r gin.IRouter) {
 	auth := r.Group("/users", middleware.Auth())
 	{
 		auth.GET("/info", GetUserInfo)
-		auth.POST("/upload", UploadUserAvatar)
+		auth.PUT("/info", UpdateInfo)
 		auth.GET("/search", SearchUser)
 	}
 }

@@ -9,6 +9,7 @@ const (
 	ApplyMySelfErrorCode
 	HandleSelfApplyErrCode
 	DuplicateHandleApplicationErrCode
+	ExpiredCode
 )
 
 func init() {
@@ -18,4 +19,5 @@ func init() {
 	errors.NewCode(ApplyMySelfErrorCode, "不能给自己提交好友申请")
 	errors.NewCode(HandleSelfApplyErrCode, "不能处理自己提交的好友申请")
 	errors.NewCode(DuplicateHandleApplicationErrCode, "不能重复处理好友申请")
+	errors.NewCode(ExpiredCode, "申请已过期")
 }

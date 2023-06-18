@@ -8,7 +8,7 @@ import (
 
 const (
 	Apply int8 = iota + 1
-	Aggre
+	Agree
 	Reject
 	Expired
 )

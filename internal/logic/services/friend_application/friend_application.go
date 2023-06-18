@@ -1,14 +1,17 @@
 package friend_application
 
 import (
+	"context"
 	"github.com/ykds/zura/internal/logic/codec"
 	"github.com/ykds/zura/internal/logic/entity"
 	"github.com/ykds/zura/pkg/errors"
+	"github.com/ykds/zura/proto/comet"
 	"gorm.io/gorm"
 )
 
-func NewFriendApplicationService(friendApplicationEntity entity.FriendApplicationEntity, friendEntity entity.FriendEntity) FriendApplicationService {
+func NewFriendApplicationService(cometClient comet.CometClient, friendApplicationEntity entity.FriendApplicationEntity, friendEntity entity.FriendEntity) FriendApplicationService {
 	return &friendApplicationService{
+		cometClient:             cometClient,
 		friendApplicationEntity: friendApplicationEntity,
 		friendEntity:            friendEntity,
 	}
@@ -36,13 +39,30 @@ type Application struct {
 type FriendApplicationService interface {
 	ApplyFriend(userId int64, req ApplyRequest) error
 	ListApplications(userId int64) ([]Application, error)
+	ListNewApplications(userId int64) ([]Application, error)
 	UpdateApplicationStatus(userId int64, id int64, status int8) error
 	DeleteApplication(id, userId int64) error
 }
 
 type friendApplicationService struct {
+	cometClient             comet.CometClient
 	friendApplicationEntity entity.FriendApplicationEntity
 	friendEntity            entity.FriendEntity
+}
+
+func (f *friendApplicationService) ListNewApplications(userId int64) ([]Application, error) {
+	applications, err := f.ListApplications(userId)
+	if err != nil {
+		return nil, err
+	}
+	newApp := make([]Application, 0, len(applications))
+	for _, app := range applications {
+		if app.Status != entity.Apply {
+			continue
+		}
+		newApp = append(newApp, app)
+	}
+	return newApp, nil
 }
 
 func (f *friendApplicationService) ApplyFriend(userId int64, req ApplyRequest) error {
@@ -69,8 +89,11 @@ func (f *friendApplicationService) ApplyFriend(userId int64, req ApplyRequest) e
 	if err != nil {
 		return err
 	}
-	// TODO 通知对方
-	return nil
+	_, err = f.cometClient.PushNotification(context.Background(), &comet.PushNotificationRequest{
+		Type:     comet.NotificationType_NewFriend,
+		ToUserId: []int64{req.UserId},
+	})
+	return err
 }
 
 func (f *friendApplicationService) ListApplications(userId int64) ([]Application, error) {
@@ -105,21 +128,24 @@ func (f *friendApplicationService) ListApplications(userId int64) ([]Application
 }
 
 func (f *friendApplicationService) UpdateApplicationStatus(userId int64, id int64, status int8) error {
-	if status != entity.Aggre && status != entity.Reject {
+	if status != entity.Agree && status != entity.Reject {
 		return errors.WithStackByCode(codec.StatusErrCode)
 	}
 	fa, err := f.friendApplicationEntity.GetApplicationByID(id)
 	if err != nil {
 		return err
 	}
-	if fa.Status == entity.Aggre || fa.Status == entity.Reject {
+	if fa.Status == entity.Expired {
+		return errors.New(codec.ExpiredCode)
+	}
+	if fa.Status == entity.Agree || fa.Status == entity.Reject {
 		return errors.New(codec.DuplicateHandleApplicationErrCode)
 	}
 	if fa.User1Id == userId {
 		return errors.WithStackByCode(codec.HandleSelfApplyErrCode)
 	}
 	// 添加好友，更新记录状态为通过
-	if status == entity.Aggre {
+	if status == entity.Agree {
 		tx := f.friendApplicationEntity.Begin()
 		err = f.friendEntity.AddFriendTx(tx, fa.User1Id, fa.User2Id)
 		if err != nil {

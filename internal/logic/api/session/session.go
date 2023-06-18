@@ -11,12 +11,10 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func OpenSession(c *gin.Context) {
+func CreateSession(c *gin.Context) {
 	var (
-		err error
-		req struct {
-			FriendId int64 `json:"friend_id"`
-		}
+		err  error
+		req  session.CreateSessionRequest
 		resp session.SessionInfo
 	)
 	defer func() {
@@ -26,7 +24,7 @@ func OpenSession(c *gin.Context) {
 		err = errors.WithMessage(errors.New(errors.ParameterErrorStatus), err.Error())
 		return
 	}
-	resp, err = services.GetServices().SessionService.OpenSession(c.GetInt64(common.UserIdKey), req.FriendId)
+	resp, err = services.GetServices().SessionService.CreateSession(c.GetInt64(common.UserIdKey), req)
 }
 
 func ListSession(c *gin.Context) {
@@ -43,6 +41,12 @@ func ListSession(c *gin.Context) {
 		response.HttpResponse(c, err, resp)
 	}()
 	resp.Data, err = services.GetServices().SessionService.ListSession(c.GetInt64(common.UserIdKey))
+	if err != nil {
+		return
+	}
+	for i, item := range resp.Data {
+		resp.Data[i].SessionAvatar = common.ParseAvatarUrl(c, item.SessionAvatar)
+	}
 }
 
 func DeleteSession(c *gin.Context) {
@@ -58,5 +62,26 @@ func DeleteSession(c *gin.Context) {
 	if err != nil {
 		return
 	}
-	err = services.GetServices().SessionService.DeleteSession(c.GetInt64(common.UserIdKey), sessionId)
+	err = services.GetServices().SessionService.DeleteUserSession(c.GetInt64(common.UserIdKey), sessionId)
+}
+
+func UpdateSession(c *gin.Context) {
+	var (
+		err error
+		req session.UpdateUserSessionRequest
+	)
+	defer func() {
+		response.HttpResponse(c, err, nil)
+	}()
+	if err = c.BindJSON(&req); err != nil {
+		err = errors.WithMessage(errors.New(errors.ParameterErrorStatus), err.Error())
+		return
+	}
+	id := c.Param("session_id")
+	var sessionId int64
+	sessionId, err = strconv.ParseInt(id, 10, 64)
+	if err != nil {
+		return
+	}
+	err = services.GetServices().SessionService.UpdateUserSession(c.GetInt64(common.UserIdKey), sessionId, req)
 }

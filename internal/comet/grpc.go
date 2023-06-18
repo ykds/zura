@@ -4,9 +4,7 @@ import (
 	"context"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/logging"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/recovery"
-	"github.com/ykds/zura/internal/comet/codec"
 	"github.com/ykds/zura/internal/middleware"
-	"github.com/ykds/zura/pkg/errors"
 	"github.com/ykds/zura/pkg/log"
 	"github.com/ykds/zura/proto/comet"
 	"google.golang.org/grpc"
@@ -48,15 +46,12 @@ type GrpcServer struct {
 	srv *Server
 }
 
-func (g *GrpcServer) PushMsg(ctx context.Context, request *comet.PushMsgRequest) (*comet.PushMsgResponse, error) {
-	conn, ok := g.srv.onlineUsers[request.Mess.ToUserId]
-	if !ok {
-		return nil, errors.New(codec.UserIsOffline)
+func (g *GrpcServer) PushNotification(ctx context.Context, request *comet.PushNotificationRequest) (*comet.PushNotificationResponse, error) {
+	for _, id := range request.ToUserId {
+		conn, ok := g.srv.onlineUsers[id]
+		if ok {
+			conn.wch <- request
+		}
 	}
-	select {
-	case conn.wch <- request.Mess:
-	default:
-		return nil, errors.New(codec.MessageIsFull)
-	}
-	return &comet.PushMsgResponse{}, nil
+	return nil, nil
 }

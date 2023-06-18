@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package msg;
 
-option go_package="github.com/ykds/zura/message;msg";
+option go_package="github.com/ykds/zura/proto/message;msg";
 
 enum OpType {
   Msg = 0;
@@ -12,7 +12,7 @@ enum OpType {
 message Message {
   OpType op = 1;
   int64 from_user_id = 2;
-  int64 to_user_id = 3;
+  repeated int64 to_user_id = 3;
   int64 timestamp = 4;
   bytes body = 5;
 }

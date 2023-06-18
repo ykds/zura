@@ -1,13 +1,12 @@
 package middleware
 
 import (
-	"zura/internal/common"
-	"zura/internal/logic/codec"
-	"zura/pkg/errors"
-	"zura/pkg/response"
-	"zura/pkg/token"
-
 	"github.com/gin-gonic/gin"
+	"github.com/ykds/zura/internal/common"
+	"github.com/ykds/zura/internal/logic/codec"
+	"github.com/ykds/zura/pkg/errors"
+	"github.com/ykds/zura/pkg/response"
+	"github.com/ykds/zura/pkg/token"
 )
 
 func Auth() gin.HandlerFunc {

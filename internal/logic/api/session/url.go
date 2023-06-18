@@ -8,8 +8,9 @@ import (
 func RegisterSessionRouter(r gin.IRouter) {
 	group := r.Group("session", middleware.Auth())
 	{
-		group.POST("/open", OpenSession)
+		group.POST("/open", CreateSession)
 		group.GET("/list", ListSession)
 		group.DELETE("/id/:session_id", DeleteSession)
+		group.PUT("/id/:session_id", UpdateSession)
 	}
 }

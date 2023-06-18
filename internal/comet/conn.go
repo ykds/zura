@@ -2,7 +2,7 @@ package comet
 
 import (
 	"github.com/gorilla/websocket"
-	"github.com/ykds/zura/proto/message"
+	"github.com/ykds/zura/proto/comet"
 	"net/http"
 )
 
@@ -15,7 +15,7 @@ func Upgrade(w http.ResponseWriter, r *http.Request) (*Conn, error) {
 	}
 	conn := &Conn{
 		Conn:  c,
-		wch:   make(chan *msg.Message, 10),
+		wch:   make(chan *comet.PushNotificationRequest, 10),
 		close: make(chan struct{}),
 	}
 	return conn, nil
@@ -24,7 +24,7 @@ func Upgrade(w http.ResponseWriter, r *http.Request) (*Conn, error) {
 type Conn struct {
 	*websocket.Conn
 	UserId int64
-	wch    chan *msg.Message
+	wch    chan *comet.PushNotificationRequest
 	close  chan struct{}
 }
 

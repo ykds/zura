@@ -1,6 +1,7 @@
 package user
 
 import (
+	"github.com/gin-gonic/gin"
 	"github.com/ykds/zura/internal/common"
 	"github.com/ykds/zura/internal/logic/codec"
 	"github.com/ykds/zura/internal/logic/entity"
@@ -8,10 +9,6 @@ import (
 	"github.com/ykds/zura/internal/logic/services/user"
 	"github.com/ykds/zura/pkg/errors"
 	"github.com/ykds/zura/pkg/response"
-	"mime/multipart"
-	"net/url"
-
-	"github.com/gin-gonic/gin"
 )
 
 func Register(c *gin.Context) {
@@ -82,42 +79,23 @@ func GetUserInfo(c *gin.Context) {
 	}()
 	userId := c.GetInt64(common.UserIdKey)
 	resp, err = services.GetServices().UserService.GetUserInfo(userId)
-	if resp.Avatar != "" {
-		avatarUrl := url.URL{
-			Scheme: "http",
-			Host:   c.Request.Host,
-			Path:   common.StaticPath + resp.Avatar,
-		}
-		resp.Avatar = avatarUrl.String()
-	}
-
+	resp.Avatar = common.ParseAvatarUrl(c, resp.Avatar)
 }
 
-func UploadUserAvatar(c *gin.Context) {
+func UpdateInfo(c *gin.Context) {
 	var (
-		err  error
-		file *multipart.FileHeader
-		resp struct {
-			Url string `json:"url"`
-		}
+		err error
+		req user.UpdateUserInfoRequest
 	)
 	defer func() {
-		response.HttpResponse(c, err, resp)
+		response.HttpResponse(c, err, nil)
 	}()
-	file, err = c.FormFile("file")
-	if err != nil {
-		return
-	}
-	err = c.SaveUploadedFile(file, common.StaticDir+file.Filename)
-	if err != nil {
+	if err = c.BindJSON(&req); err != nil {
+		err = errors.WithMessage(errors.New(errors.ParameterErrorStatus), err.Error())
 		return
 	}
 	userId := c.GetInt64(common.UserIdKey)
-	err = services.GetServices().UserService.UpdateUserInfo(userId, user.UpdateUserInfoRequest{Avatar: file.Filename})
-	if err != nil {
-		return
-	}
-	resp.Url = (&url.URL{Scheme: "http", Host: c.Request.Host, Path: common.StaticPath + file.Filename}).String()
+	err = services.GetServices().UserService.UpdateUserInfo(userId, req)
 }
 
 func SearchUser(c *gin.Context) {
@@ -141,10 +119,7 @@ func SearchUser(c *gin.Context) {
 	resp.Data, err = services.GetServices().UserService.SearchUser(req)
 	if err == nil {
 		for i, item := range resp.Data {
-			if item.Avatar == "" {
-				continue
-			}
-			resp.Data[i].Avatar = (&url.URL{Scheme: "http", Host: c.Request.Host, Path: item.Avatar}).String()
+			resp.Data[i].Avatar = common.ParseAvatarUrl(c, item.Avatar)
 		}
 	}
 }

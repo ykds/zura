@@ -36,9 +36,11 @@ func (v *verifyCodeService) GenVerifyCode(key string) (string, error) {
 func (v *verifyCodeService) VerifyCode(key string, code string) (bool, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
-	// TODO 如何key过期了会返回什么
 	verifyCode, err := v.cache.Get(ctx, key).Result()
 	if err != nil {
+		if err.Error() == "redis: nil" {
+			return false, nil
+		}
 		return false, err
 	}
 	return code == verifyCode, nil

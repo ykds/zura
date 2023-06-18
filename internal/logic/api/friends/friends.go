@@ -1,14 +1,12 @@
 package friends
 
 import (
+	"github.com/gin-gonic/gin"
 	"github.com/ykds/zura/internal/common"
 	"github.com/ykds/zura/internal/logic/services"
 	"github.com/ykds/zura/internal/logic/services/friends"
 	"github.com/ykds/zura/pkg/errors"
 	"github.com/ykds/zura/pkg/response"
-	"net/url"
-
-	"github.com/gin-gonic/gin"
 )
 
 func ListFriends(c *gin.Context) {
@@ -28,10 +26,7 @@ func ListFriends(c *gin.Context) {
 	resp.Data, err = services.GetServices().FriendsService.ListFriends(userId)
 	if err == nil {
 		for i, u := range resp.Data {
-			if u.Avatar == "" {
-				continue
-			}
-			resp.Data[i].Avatar = (&url.URL{Scheme: "http", Host: c.Request.Host, Path: u.Avatar}).String()
+			resp.Data[i].Avatar = common.ParseAvatarUrl(c, u.Avatar)
 		}
 	}
 }

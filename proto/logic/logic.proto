@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package logic;
 
-option go_package="github.com/ykds/zura/logic;logic";
+option go_package="github.com/ykds/zura/proto/logic;logic";
 
 message ConnectionRequest {
   int64 user_id = 1;

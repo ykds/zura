@@ -57,7 +57,6 @@ type UpdateUserInfoRequest struct {
 	Phone    string `json:"phone"`
 	Email    string `json:"email"`
 	Avatar   string `json:"avatar"`
-	Password string `json:"password"`
 }
 
 type ChangePasswordRequest struct {

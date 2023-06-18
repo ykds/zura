@@ -2,16 +2,23 @@ syntax = "proto3";
 
 package comet;
 
-option go_package="github.com/ykds/zura/comet;comet";
+option go_package="github.com/ykds/zura/proto/comet;comet";
 
-import "proto/message/message.proto";
-
-message PushMsgRequest {
-  msg.Message mess = 3;
+enum NotificationType {
+  NewMsg = 0;
+  NewFriend = 1;
 }
 
-message PushMsgResponse {}
+message PushNotificationRequest {
+  NotificationType type = 1;
+  int64 session_id = 2;
+  repeated int64 ToUserId = 3;
+}
+
+message PushNotificationResponse {
+  map<string, int32> result = 1;
+}
 
 service Comet {
-  rpc PushMsg(PushMsgRequest) returns(PushMsgResponse);
+  rpc PushNotification(PushNotificationRequest) returns(PushNotificationResponse);
 }

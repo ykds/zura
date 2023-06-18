@@ -3,8 +3,11 @@ package server
 import (
 	"context"
 	"github.com/ykds/zura/internal/common"
+	"github.com/ykds/zura/internal/logic/api/fileupload"
 	"github.com/ykds/zura/internal/logic/api/friend_application"
 	"github.com/ykds/zura/internal/logic/api/friends"
+	"github.com/ykds/zura/internal/logic/api/group"
+	"github.com/ykds/zura/internal/logic/api/message"
 	"github.com/ykds/zura/internal/logic/api/session"
 	"github.com/ykds/zura/internal/logic/api/user"
 	"github.com/ykds/zura/pkg/log"
@@ -113,4 +116,7 @@ func loadRouters(r gin.IRouter) {
 	friends.RegisterFriendsRouter(api)
 	friend_application.RegisterFriendApplicationRouter(api)
 	session.RegisterSessionRouter(api)
+	fileupload.RegisterUploadRouter(api)
+	group.RegisterGroupRouter(api)
+	message.RegisterMessageRouter(api)
 }

@@ -105,26 +105,22 @@ func (s *Server) online(userId int64, conn *Conn) error {
 	conn.UserId = userId
 	s.m.Lock()
 	s.onlineUsers[userId] = conn
+	log.Infof("User[%d] online.", userId)
 	s.m.Unlock()
 	return nil
 }
 
 func (s *Server) offline(userId int64) error {
-	s.m.RLock()
-	_, ok := s.onlineUsers[userId]
-	if !ok {
-		s.m.RUnlock()
-		return nil
-	}
-	s.m.RUnlock()
+	s.m.Lock()
+	delete(s.onlineUsers, userId)
+	log.Infof("User[%d] offline.", userId)
+	s.m.Unlock()
+
 	if _, err := s.logicClient.Disconnect(context.Background(), &logic.DisconnectRequest{
 		UserId: userId,
 	}); err != nil {
 		return err
 	}
-	s.m.Lock()
-	delete(s.onlineUsers, userId)
-	s.m.Unlock()
 	return nil
 }
 
@@ -138,6 +134,7 @@ func (s *Server) Recv(conn *Conn) {
 		message, _, err := conn.ReadMessage()
 		if err != nil {
 			_ = conn.CloseConn()
+			_ = s.offline(conn.UserId)
 			log.GetGlobalLogger().Errorf("User[%d] err closed connection, error: %+v", conn.UserId, err)
 			return
 		}
@@ -145,6 +142,7 @@ func (s *Server) Recv(conn *Conn) {
 		case websocket.TextMessage:
 		case websocket.CloseMessage:
 			_ = conn.CloseConn()
+			_ = s.offline(conn.UserId)
 			log.GetGlobalLogger().Infof("User[%d] initiative closed connection", conn.UserId)
 			return
 		case websocket.PingMessage:
@@ -162,6 +160,7 @@ func (s *Server) Recv(conn *Conn) {
 			}
 			if i == 3 {
 				_ = conn.CloseConn()
+				_ = s.offline(conn.UserId)
 				log.GetGlobalLogger().Infof("User[%d] heartbeat failed, err: %+V", conn.UserId, err)
 				return
 			}
@@ -189,6 +188,7 @@ func (s *Server) Write(conn *Conn) {
 				log.GetGlobalLogger().Infof("User[%d] connection closed by server", conn.UserId)
 				return
 			}
+			_ = s.offline(conn.UserId)
 		}
 	}
 }

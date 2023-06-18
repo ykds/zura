@@ -28,7 +28,7 @@ func (b *BaseModel) BeforeCreate(_ *gorm.DB) (err error) {
 }
 
 var tables = []interface{}{
-	User{}, Friends{}, Session{}, FriendApplication{}, SessionSetting{}, SessionMember{},
+	User{}, Friends{}, FriendApplication{}, UserSession{}, Group{}, GroupMember{}, Message{}, GroupMessage{},
 }
 
 func migrateTable(d *db.Database) error {
@@ -40,6 +40,8 @@ type Entity struct {
 	FriendEntity            FriendEntity
 	FriendApplicationEntity FriendApplicationEntity
 	SessionEntity           SessionEntity
+	MessageEntity           MessageEntity
+	GroupEntity             GroupEntity
 }
 
 func GetEntity() *Entity {
@@ -58,6 +60,8 @@ func NewEntity(database *db.Database, _ *cache.Redis) {
 		FriendEntity:            NewFriendEntity(database),
 		FriendApplicationEntity: NewFriendApplication(database),
 		SessionEntity:           NewSessionEntity(database),
+		MessageEntity:           NewMessageEntity(database),
+		GroupEntity:             NewGroupEntity(database),
 	}
 }
 
