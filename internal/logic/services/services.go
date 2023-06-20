@@ -34,7 +34,7 @@ type Service struct {
 	GroupService             group.GroupService
 }
 
-func NewServices(cache *cache.Redis, entities *entity.Entity, cometClient comet.CometClient) {
+func NewServices(cache cache.Cache, entities *entity.Entity, cometClient comet.CometClient) {
 	verifyCodeService := verify_code.NewVerifyCodeService(cache)
 	friendService := friends.NewFriendsService(entities.FriendEntity, entities.UserEntity)
 	services = &Service{

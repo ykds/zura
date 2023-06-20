@@ -22,7 +22,7 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type CometClient interface {
-	PushNotification(ctx context.Context, in *PushNotificationRequest, opts ...grpc.CallOption) (*PushNotificationResponse, error)
+	PushNotification(ctx context.Context, in *Proto, opts ...grpc.CallOption) (*PushNotificationResponse, error)
 }
 
 type cometClient struct {
@@ -33,7 +33,7 @@ func NewCometClient(cc grpc.ClientConnInterface) CometClient {
 	return &cometClient{cc}
 }
 
-func (c *cometClient) PushNotification(ctx context.Context, in *PushNotificationRequest, opts ...grpc.CallOption) (*PushNotificationResponse, error) {
+func (c *cometClient) PushNotification(ctx context.Context, in *Proto, opts ...grpc.CallOption) (*PushNotificationResponse, error) {
 	out := new(PushNotificationResponse)
 	err := c.cc.Invoke(ctx, "/comet.Comet/PushNotification", in, out, opts...)
 	if err != nil {
@@ -46,7 +46,7 @@ func (c *cometClient) PushNotification(ctx context.Context, in *PushNotification
 // All implementations must embed UnimplementedCometServer
 // for forward compatibility
 type CometServer interface {
-	PushNotification(context.Context, *PushNotificationRequest) (*PushNotificationResponse, error)
+	PushNotification(context.Context, *Proto) (*PushNotificationResponse, error)
 	mustEmbedUnimplementedCometServer()
 }
 
@@ -54,7 +54,7 @@ type CometServer interface {
 type UnimplementedCometServer struct {
 }
 
-func (UnimplementedCometServer) PushNotification(context.Context, *PushNotificationRequest) (*PushNotificationResponse, error) {
+func (UnimplementedCometServer) PushNotification(context.Context, *Proto) (*PushNotificationResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method PushNotification not implemented")
 }
 func (UnimplementedCometServer) mustEmbedUnimplementedCometServer() {}
@@ -71,7 +71,7 @@ func RegisterCometServer(s grpc.ServiceRegistrar, srv CometServer) {
 }
 
 func _Comet_PushNotification_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(PushNotificationRequest)
+	in := new(Proto)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -83,7 +83,7 @@ func _Comet_PushNotification_Handler(srv interface{}, ctx context.Context, dec f
 		FullMethod: "/comet.Comet/PushNotification",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(CometServer).PushNotification(ctx, req.(*PushNotificationRequest))
+		return srv.(CometServer).PushNotification(ctx, req.(*Proto))
 	}
 	return interceptor(ctx, in, info, handler)
 }

@@ -22,8 +22,47 @@ message HeartBeatRequest {
 
 message HeartBeatResponse {}
 
+message ListNewMessageRequest {
+  int64 user_id = 1;
+  int64 session_id = 2;
+  int64 timestamp = 3;
+  int32 limit = 4;
+}
+
+message ListNewMessageResponse {
+  repeated MessageItem Data = 1;
+}
+
+message MessageItem {
+  int64 id = 1;
+  int64 uni_key = 2;
+  int64 session_id = 3;
+  int64 from_user_id = 4;
+  int64 timestamp = 5;
+  string body = 6;
+}
+
+message ListNewApplicationsRequest {
+  int64 user_id = 1;
+}
+
+message ListNewApplicationsResponse {
+ repeated ApplicationItem Data = 1;
+}
+
+message ApplicationItem {
+  int64 id = 1;
+  int64 user_id = 2;
+  string markup = 3;
+  int32 type = 4;
+  int32 status = 5;
+  int64 updated_time = 6;
+}
+
 service Logic {
   rpc Connect(ConnectionRequest) returns (ConnectionResponse);
   rpc Disconnect(DisconnectRequest) returns (DisconnectResponse);
   rpc HeartBeat(HeartBeatRequest) returns (HeartBeatResponse);
+  rpc ListNewMessage(ListNewMessageRequest) returns (ListNewMessageResponse);
+  rpc ListNewApplications(ListNewApplicationsRequest) returns (ListNewApplicationsResponse);
 }

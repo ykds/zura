@@ -7,10 +7,11 @@ import (
 
 func RegisterSessionRouter(r gin.IRouter) {
 	group := r.Group("session", middleware.Auth())
+	v1 := group.Group("/v1")
 	{
-		group.POST("/open", CreateSession)
-		group.GET("/list", ListSession)
-		group.DELETE("/id/:session_id", DeleteSession)
-		group.PUT("/id/:session_id", UpdateSession)
+		v1.POST("/open", CreateSession)
+		v1.GET("/list", ListSession)
+		v1.DELETE("/id/:session_id", DeleteSession)
+		v1.PUT("/id/:session_id", UpdateSession)
 	}
 }

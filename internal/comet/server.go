@@ -8,6 +8,7 @@ import (
 	"github.com/ykds/zura/internal/common"
 	"github.com/ykds/zura/pkg/log"
 	"github.com/ykds/zura/pkg/response"
+	"github.com/ykds/zura/proto/comet"
 	"github.com/ykds/zura/proto/logic"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -23,10 +24,11 @@ func GetConfig() *Config {
 }
 
 type Config struct {
-	Debug bool       `json:"debug" yaml:"debug"`
-	Port  string     `json:"port" yaml:"port"`
-	Logic Logic      `json:"logic" yaml:"logic"`
-	Log   log.Config `json:"log" yaml:"log"`
+	Debug    bool       `json:"debug" yaml:"debug"`
+	HttpPort string     `json:"http_port" yaml:"http_port"`
+	GrpcPort string     `json:"grpc_port" yaml:"grpc_port"`
+	Logic    Logic      `json:"logic" yaml:"logic"`
+	Log      log.Config `json:"log" yaml:"log"`
 }
 
 type Logic struct {
@@ -35,6 +37,7 @@ type Logic struct {
 }
 
 type Server struct {
+	cfg         *Config
 	logicClient logic.LogicClient
 	m           sync.RWMutex
 	httpServer  http.Server
@@ -51,8 +54,9 @@ func NewServer(c *Config) *Server {
 		engine.Use(gin.LoggerWithWriter(log.GetGlobalLogger()), gin.RecoveryWithWriter(log.GetGlobalLogger()))
 	}
 	s := &Server{
+		cfg: c,
 		httpServer: http.Server{
-			Addr:    ":" + c.Port,
+			Addr:    ":" + c.HttpPort,
 			Handler: engine,
 		},
 		onlineUsers: make(map[int64]*Conn),
@@ -69,7 +73,7 @@ func NewServer(c *Config) *Server {
 
 	go func() {
 		if err := s.httpServer.ListenAndServe(); err != nil {
-			log.GetGlobalLogger().Fatalf("comet server exit, error: %v", err)
+			log.Fatalf("comet server exit, error: %v", err)
 			return
 		}
 	}()
@@ -105,7 +109,7 @@ func (s *Server) online(userId int64, conn *Conn) error {
 	conn.UserId = userId
 	s.m.Lock()
 	s.onlineUsers[userId] = conn
-	log.Infof("User[%d] online.", userId)
+	log.Debugf("User[%d] online.", userId)
 	s.m.Unlock()
 	return nil
 }
@@ -113,7 +117,7 @@ func (s *Server) online(userId int64, conn *Conn) error {
 func (s *Server) offline(userId int64) error {
 	s.m.Lock()
 	delete(s.onlineUsers, userId)
-	log.Infof("User[%d] offline.", userId)
+	log.Debugf("User[%d] offline.", userId)
 	s.m.Unlock()
 
 	if _, err := s.logicClient.Disconnect(context.Background(), &logic.DisconnectRequest{
@@ -124,26 +128,70 @@ func (s *Server) offline(userId int64) error {
 	return nil
 }
 
+type SyncMessageRequest struct {
+	SessionId int64 `form:"session_id"`
+	Timestamp int64 `form:"timestamp"`
+	Limit     int   `form:"limit"`
+}
+
 func (s *Server) Recv(conn *Conn) {
 	defer func() {
 		if err := recover(); err != nil {
-			log.GetGlobalLogger().Errorf("User[%d] Recv panic, error: %+v", conn.UserId, err)
+			log.Errorf("User[%d] Recv panic, error: %+v", conn.UserId, err)
 		}
 	}()
 	for {
-		message, _, err := conn.ReadMessage()
+		message, content, err := conn.ReadMessage()
 		if err != nil {
 			_ = conn.CloseConn()
 			_ = s.offline(conn.UserId)
-			log.GetGlobalLogger().Errorf("User[%d] err closed connection, error: %+v", conn.UserId, err)
+			log.Debugf("User[%d] err closed connection, error: %+v", conn.UserId, err)
 			return
 		}
+
 		switch message {
 		case websocket.TextMessage:
+			p := comet.Proto{}
+			err = json.Unmarshal(content, &p)
+			if err != nil {
+				log.Errorf("User[%d] request error, raw content: %s, err: %+v", conn.UserId, string(content), err)
+				continue
+			}
+			switch p.Op {
+			case comet.Op_SynNewMsg:
+				req := comet.SyncMessageReq{}
+				err := json.Unmarshal(p.Body, &req)
+				if err != nil {
+					log.Errorf("User[%d] sync mess request error, raw content: %s, err: %+v", conn.UserId, string(p.Body), err)
+					continue
+				}
+				listNewMessage, err := s.logicClient.ListNewMessage(context.Background(), &logic.ListNewMessageRequest{
+					UserId:    conn.UserId,
+					SessionId: req.SessionId,
+					Timestamp: req.Timestamp,
+					Limit:     req.Limit,
+				})
+				if err != nil {
+					log.Errorf("User[%d] list new message error, err: %+v", conn.UserId, err)
+					continue
+				}
+				result := []byte{}
+				if listNewMessage.Data != nil {
+					result, err = json.Marshal(listNewMessage.Data)
+					if err != nil {
+						log.Errorf("User[%d] json marshal new message error, err: %+v", conn.UserId, err)
+						continue
+					}
+				}
+				conn.wch <- &comet.Proto{
+					Op:   comet.Op_NewMsgReply,
+					Body: result,
+				}
+			}
 		case websocket.CloseMessage:
 			_ = conn.CloseConn()
 			_ = s.offline(conn.UserId)
-			log.GetGlobalLogger().Infof("User[%d] initiative closed connection", conn.UserId)
+			log.Debugf("User[%d] initiative closed connection", conn.UserId)
 			return
 		case websocket.PingMessage:
 			i := 0
@@ -161,7 +209,7 @@ func (s *Server) Recv(conn *Conn) {
 			if i == 3 {
 				_ = conn.CloseConn()
 				_ = s.offline(conn.UserId)
-				log.GetGlobalLogger().Infof("User[%d] heartbeat failed, err: %+V", conn.UserId, err)
+				log.Debugf("User[%d] heartbeat failed, err: %+V", conn.UserId, err)
 				return
 			}
 		}
@@ -171,21 +219,23 @@ func (s *Server) Recv(conn *Conn) {
 func (s *Server) Write(conn *Conn) {
 	defer func() {
 		if err := recover(); err != nil {
-			log.GetGlobalLogger().Errorf("User[%d] Write panic, error: %+v", conn.UserId, err)
+			log.Errorf("User[%d] Write panic, error: %+v", conn.UserId, err)
 		}
 	}()
 	for {
 		select {
 		case message := <-conn.wch:
+			log.Debugf("recv message %+v", message)
 			data, _ := json.Marshal(message)
 			err := conn.WriteMessage(websocket.TextMessage, data)
 			if err != nil {
-				log.GetGlobalLogger().Errorf("Write message to User[%d] failed, err: %+v", conn.UserId, err)
+				log.Errorf("Write message to User[%d] failed, err: %+v", conn.UserId, err)
+				continue
 			}
 		case <-conn.close:
 			err := conn.WriteMessage(websocket.CloseMessage, nil)
 			if err != nil {
-				log.GetGlobalLogger().Infof("User[%d] connection closed by server", conn.UserId)
+				log.Errorf("User[%d] connection closed by server", conn.UserId)
 				return
 			}
 			_ = s.offline(conn.UserId)

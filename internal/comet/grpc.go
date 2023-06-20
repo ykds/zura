@@ -26,14 +26,14 @@ func NewGrpcServer(srv *Server) *grpc.Server {
 			Timeout:               3 * time.Second,
 		}))
 	comet.RegisterCometServer(server, &GrpcServer{srv: srv})
-	listen, err := net.Listen("tcp", "9001")
+	listen, err := net.Listen("tcp", ":"+srv.cfg.GrpcPort)
 	if err != nil {
 		panic(err)
 	}
 	go func() {
 		err := server.Serve(listen)
 		if err != nil {
-			log.GetGlobalLogger().Fatalf("comet grpc server exit, error: %+v", err)
+			log.Fatalf("comet grpc server exit, error: %+v", err)
 		}
 	}()
 	return server
@@ -53,5 +53,5 @@ func (g *GrpcServer) PushNotification(ctx context.Context, request *comet.PushNo
 			conn.wch <- request
 		}
 	}
-	return nil, nil
+	return &comet.PushNotificationResponse{}, nil
 }

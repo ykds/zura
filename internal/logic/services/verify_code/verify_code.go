@@ -3,11 +3,12 @@ package verify_code
 import (
 	"context"
 	"github.com/ykds/zura/pkg/cache"
+	"github.com/ykds/zura/pkg/errors"
 	"github.com/ykds/zura/pkg/random"
 	"time"
 )
 
-func NewVerifyCodeService(cache *cache.Redis) VerifyCodeService {
+func NewVerifyCodeService(cache cache.Cache) VerifyCodeService {
 	return &verifyCodeService{
 		cache: cache,
 	}
@@ -19,14 +20,14 @@ type VerifyCodeService interface {
 }
 
 type verifyCodeService struct {
-	cache *cache.Redis
+	cache cache.Cache
 }
 
 func (v *verifyCodeService) GenVerifyCode(key string) (string, error) {
 	code := random.RandNum(8)
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
-	err := v.cache.Set(ctx, key, code, time.Minute*30).Err()
+	err := v.cache.Set(ctx, key, code, time.Minute*30)
 	if err != nil {
 		return "", err
 	}
@@ -36,12 +37,12 @@ func (v *verifyCodeService) GenVerifyCode(key string) (string, error) {
 func (v *verifyCodeService) VerifyCode(key string, code string) (bool, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
-	verifyCode, err := v.cache.Get(ctx, key).Result()
+	verifyCode, err := v.cache.Get(ctx, key)
 	if err != nil {
-		if err.Error() == "redis: nil" {
+		if errors.Is(err, cache.NotFoundErr) {
 			return false, nil
 		}
 		return false, err
 	}
-	return code == verifyCode, nil
+	return code == verifyCode.(string), nil
 }

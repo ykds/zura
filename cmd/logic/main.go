@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"github.com/ykds/zura/internal/logic/config"
 	"github.com/ykds/zura/internal/logic/entity"
 	"github.com/ykds/zura/internal/logic/server"
@@ -28,7 +29,7 @@ func main() {
 	flag.Parse()
 	cfg.InitConfig(*configPath, config.GetConfig())
 
-	snowflake.InitSnowflake()
+	snowflake.InitSnowflake(1)
 
 	l := zap.NewLogger(&config.GetConfig().Log,
 		zap.WithDebug(config.GetConfig().Server.Debug),
@@ -38,11 +39,11 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	database := db.New(&config.GetConfig().Database, db.WithDebug(config.GetConfig().Server.Debug))
-	caches := cache.NewRedis(ctx, &config.GetConfig().Cache)
+	caches := cache.NewMemoryCache()
 	entity.NewEntity(database, caches)
 
 	ctx2, cancel2 := context.WithTimeout(ctx, 2*time.Second)
-	cometConn, err := grpc.DialContext(ctx2, "127.0.0.1:9001", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	cometConn, err := grpc.DialContext(ctx2, fmt.Sprintf("%s:%s", config.GetConfig().CometServer.Host, config.GetConfig().CometServer.Port), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Panicf("new comet grpc client failed, err: %+v", err)
 	}
@@ -57,7 +58,7 @@ func main() {
 		server.WithDebug(config.GetConfig().Server.Debug))
 	httpServer.Run()
 
-	logicGrpcSrv := server.NewGrpcServer(*services.GetServices())
+	logicGrpcSrv := server.NewGrpcServer(config.GetConfig().GrpcServer, *services.GetServices())
 
 	log.Info("server started.")
 	sig := make(chan os.Signal, 1)

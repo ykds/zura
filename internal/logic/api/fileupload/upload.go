@@ -28,11 +28,11 @@ func Upload(c *gin.Context) {
 		return
 	}
 	ext := filepath.Ext(file.Filename)
-	filename := fmt.Sprintf("%d.%s", time.Now().UnixMilli(), ext)
-	err = c.SaveUploadedFile(file, common.StaticDir+filename)
+	file.Filename = fmt.Sprintf("%d%s", time.Now().UnixMilli(), ext)
+	err = c.SaveUploadedFile(file, common.StaticDir+file.Filename)
 	if err != nil {
 		return
 	}
-	resp.Url = (&url.URL{Scheme: "http", Host: c.Request.Host, Path: common.StaticPath + filename}).String()
-	resp.Filename = filename
+	resp.Url = (&url.URL{Scheme: "http", Host: c.Request.Host, Path: common.StaticPath + file.Filename}).String()
+	resp.Filename = file.Filename
 }

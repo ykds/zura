@@ -2,6 +2,7 @@ package friend_application
 
 import (
 	"context"
+	"encoding/json"
 	"github.com/ykds/zura/internal/logic/codec"
 	"github.com/ykds/zura/internal/logic/entity"
 	"github.com/ykds/zura/pkg/errors"
@@ -81,17 +82,26 @@ func (f *friendApplicationService) ApplyFriend(userId int64, req ApplyRequest) e
 	fa, err := f.friendApplicationEntity.GetApplication(userId, req.UserId)
 	if err != nil {
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
-			return f.friendApplicationEntity.CreateApplication(userId, req.UserId)
+			return err
 		}
-		err = nil
+		err = f.friendApplicationEntity.CreateApplication(entity.FriendApplication{
+			User1Id: userId,
+			User2Id: req.UserId,
+			Markup:  req.Markup,
+		})
+		if err != nil {
+			return err
+		}
+	} else {
+		err = f.friendApplicationEntity.UpdateApplication(fa.ID, entity.FriendApplication{Markup: req.Markup, DeletedBy: entity.ApplicationNormal})
+		if err != nil {
+			return err
+		}
 	}
-	err = f.friendApplicationEntity.UpdateApplication(fa.ID, entity.FriendApplication{Markup: req.Markup, DeletedBy: entity.ApplicationNormal})
-	if err != nil {
-		return err
-	}
-	_, err = f.cometClient.PushNotification(context.Background(), &comet.PushNotificationRequest{
-		Type:     comet.NotificationType_NewFriend,
-		ToUserId: []int64{req.UserId},
+	body, _ := json.Marshal([]int64{req.UserId})
+	_, err = f.cometClient.PushNotification(context.Background(), &comet.Proto{
+		Op:   comet.Op_NewApplication,
+		Body: body,
 	})
 	return err
 }

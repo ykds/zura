@@ -1,6 +1,12 @@
 server:
   debug: true
 
+http_server:
+  port: "8000"
+
+grpc_server:
+  port: "8001"
+
 database:
   driver: "mysql"
   host: "127.0.0.1"
@@ -16,3 +22,7 @@ log:
   max_size: 10
   max_backups: 5
   compress: false
+
+comet_server:
+  host: "127.0.0.1"
+  port: "9001"

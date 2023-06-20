@@ -55,7 +55,7 @@ func (s2 sessionEntity) GetUserSession(where map[string]interface{}) (UserSessio
 
 func (s2 sessionEntity) ListSession(userId int64) ([]UserSession, error) {
 	us := make([]UserSession, 0)
-	err := s2.db.Find(&us, "user_id=?", userId).Error
+	err := s2.db.Find(&us, "user_id=?", userId).Order("is_sticky desc").Error
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}

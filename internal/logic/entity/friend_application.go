@@ -42,7 +42,7 @@ type FriendApplicationEntity interface {
 	Transaction
 	GetApplication(user1Id, user2Id int64) (FriendApplication, error)
 	GetApplicationByID(id int64) (FriendApplication, error)
-	CreateApplication(user1Id, user2Id int64) error
+	CreateApplication(app FriendApplication) error
 	UpdateApplicationStatus(id int64, status int8) error
 	UpdateApplicationStatusTx(tx *gorm.DB, id int64, status int8) error
 	UpdateApplication(id int64, fa FriendApplication) error
@@ -72,8 +72,10 @@ func (f *friendApplicationEntity) GetApplicationByID(id int64) (FriendApplicatio
 	return fa, err
 }
 
-func (f *friendApplicationEntity) CreateApplication(user1Id, user2Id int64) error {
-	err := f.db.Create(&FriendApplication{User1Id: user1Id, User2Id: user2Id, Status: Apply, DeletedBy: ApplicationNormal}).Error
+func (f *friendApplicationEntity) CreateApplication(app FriendApplication) error {
+	app.Status = Apply
+	app.DeletedBy = ApplicationNormal
+	err := f.db.Create(&app).Error
 	if err != nil {
 		err = errors.WithStack(err)
 	}

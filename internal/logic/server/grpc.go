@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"github.com/ykds/zura/internal/logic/services"
+	"github.com/ykds/zura/internal/logic/services/message"
 	"github.com/ykds/zura/internal/middleware"
 	"github.com/ykds/zura/pkg/log"
 	"github.com/ykds/zura/proto/logic"
@@ -15,7 +16,17 @@ import (
 	"google.golang.org/grpc"
 )
 
-func NewGrpcServer(service services.Service) *grpc.Server {
+type GrpcServerConfig struct {
+	Port string `json:"port" yaml:"port"`
+}
+
+func DefaultGrpcConfig() GrpcServerConfig {
+	return GrpcServerConfig{
+		Port: "8001",
+	}
+}
+
+func NewGrpcServer(c GrpcServerConfig, service services.Service) *grpc.Server {
 	srv := grpc.NewServer(
 		grpc.ChainUnaryInterceptor(
 			recovery.UnaryServerInterceptor(),
@@ -29,14 +40,14 @@ func NewGrpcServer(service services.Service) *grpc.Server {
 		}),
 	)
 	logic.RegisterLogicServer(srv, &LogicGrpcServer{srv: service})
-	listen, err := net.Listen("tcp", "8001")
+	listen, err := net.Listen("tcp", ":"+c.Port)
 	if err != nil {
 		panic(err)
 	}
 	go func() {
 		err := srv.Serve(listen)
 		if err != nil {
-			log.GetGlobalLogger().Fatalf("logic grpc server exit, error: %+v", err)
+			log.Fatalf("logic grpc server exit, error: %+v", err)
 		}
 	}()
 	return srv
@@ -47,6 +58,52 @@ var _ logic.LogicServer = &LogicGrpcServer{}
 type LogicGrpcServer struct {
 	logic.UnimplementedLogicServer
 	srv services.Service
+}
+
+func (l LogicGrpcServer) ListNewMessage(ctx context.Context, request *logic.ListNewMessageRequest) (*logic.ListNewMessageResponse, error) {
+	newMessage, err := l.srv.MessageService.ListNewMessage(request.UserId, message.ListMessageRequest{
+		SessionId: request.SessionId,
+		Timestamp: request.Timestamp,
+		Limit:     int(request.Limit),
+	})
+	if err != nil {
+		return &logic.ListNewMessageResponse{}, err
+	}
+	data := make([]*logic.MessageItem, 0, len(newMessage))
+	for _, item := range newMessage {
+		data = append(data, &logic.MessageItem{
+			Id:         item.ID,
+			UniKey:     item.UniKey,
+			SessionId:  item.SessionId,
+			FromUserId: item.SendUserId,
+			Timestamp:  item.Timestamp,
+			Body:       item.Body,
+		})
+	}
+	return &logic.ListNewMessageResponse{
+		Data: data,
+	}, nil
+}
+
+func (l LogicGrpcServer) ListNewApplications(ctx context.Context, request *logic.ListNewApplicationsRequest) (*logic.ListNewApplicationsResponse, error) {
+	applications, err := l.srv.FriendApplicationService.ListNewApplications(request.UserId)
+	if err != nil {
+		return &logic.ListNewApplicationsResponse{}, nil
+	}
+	data := make([]*logic.ApplicationItem, 0, len(applications))
+	for _, app := range applications {
+		data = append(data, &logic.ApplicationItem{
+			Id:          app.ID,
+			UserId:      app.UserId,
+			Markup:      app.Markup,
+			Type:        int32(app.Type),
+			Status:      int32(app.Status),
+			UpdatedTime: app.UpdatedTime,
+		})
+	}
+	return &logic.ListNewApplicationsResponse{
+		Data: data,
+	}, nil
 }
 
 func (l LogicGrpcServer) Connect(ctx context.Context, request *logic.ConnectionRequest) (*logic.ConnectionResponse, error) {

@@ -23,7 +23,7 @@ func ListHistoryMessage(c *gin.Context) {
 		}
 		response.HttpResponse(c, err, resp)
 	}()
-	if err = c.BindJSON(&req); err != nil {
+	if err = c.BindQuery(&req); err != nil {
 		err = errors.WithMessage(errors.New(errors.ParameterErrorStatus), err.Error())
 		return
 	}
@@ -44,7 +44,7 @@ func ListNewMessage(c *gin.Context) {
 		}
 		response.HttpResponse(c, err, resp)
 	}()
-	if err = c.BindJSON(&req); err != nil {
+	if err = c.BindQuery(&req); err != nil {
 		err = errors.WithMessage(errors.New(errors.ParameterErrorStatus), err.Error())
 		return
 	}

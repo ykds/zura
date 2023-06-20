@@ -14,11 +14,16 @@ type ServerConfig struct {
 }
 
 type Config struct {
-	Server     ServerConfig            `json:"server" yaml:"server"`
-	Database   db.Config               `json:"database" yaml:"database"`
-	Cache      cache.Config            `json:"cache" yaml:"cache"`
-	Log        log.Config              `json:"log" yaml:"log"`
-	HttpServer server.HttpServerConfig `json:"http_server" yaml:"http_server"`
+	Server      ServerConfig            `json:"server" yaml:"server"`
+	Database    db.Config               `json:"database" yaml:"database"`
+	Cache       cache.Config            `json:"cache" yaml:"cache"`
+	Log         log.Config              `json:"log" yaml:"log"`
+	HttpServer  server.HttpServerConfig `json:"http_server" yaml:"http_server"`
+	CometServer struct {
+		Host string `json:"host" yaml:"host"`
+		Port string `json:"port" yaml:"port"`
+	} `json:"comet_server" yaml:"comet_server"`
+	GrpcServer server.GrpcServerConfig `json:"grpc_server" yaml:"grpc_server"`
 }
 
 func DefaultConfig() *Config {
@@ -27,6 +32,7 @@ func DefaultConfig() *Config {
 		Cache:      cache.DefaultConfig(),
 		Log:        log.DefaultConfig(),
 		HttpServer: server.DefaultConfig(),
+		GrpcServer: server.DefaultGrpcConfig(),
 	}
 }
 

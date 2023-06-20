@@ -7,14 +7,16 @@ import (
 
 func RegisterUserRouter(r gin.IRouter) {
 	noAuth := r.Group("/users")
+	v1noAuth := noAuth.Group("/v1")
 	{
-		noAuth.POST("/register", Register)
-		noAuth.POST("/login", Login)
+		v1noAuth.POST("/register", Register)
+		v1noAuth.POST("/token", Login)
 	}
 	auth := r.Group("/users", middleware.Auth())
+	v1auth := auth.Group("/v1")
 	{
-		auth.GET("/info", GetUserInfo)
-		auth.PUT("/info", UpdateInfo)
-		auth.GET("/search", SearchUser)
+		v1auth.GET("/info", GetUserInfo)
+		v1auth.PUT("/info", UpdateInfo)
+		v1auth.GET("/search", SearchUser)
 	}
 }

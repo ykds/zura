@@ -7,8 +7,9 @@ import (
 
 func RegisterFriendsRouter(r gin.IRouter) {
 	group := r.Group("friends", middleware.Auth())
+	v1 := group.Group("/v1")
 	{
-		group.GET("/list", ListFriends)
-		group.DELETE("", DeleteFriends)
+		v1.GET("/list", ListFriends)
+		v1.DELETE("", DeleteFriends)
 	}
 }

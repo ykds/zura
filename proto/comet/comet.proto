@@ -4,21 +4,32 @@ package comet;
 
 option go_package="github.com/ykds/zura/proto/comet;comet";
 
-enum NotificationType {
-  NewMsg = 0;
-  NewFriend = 1;
+message SyncMessageReq {
+  int64 session_id = 1;
+  int64 timestamp = 2;
+  int32 limit = 3;
 }
 
-message PushNotificationRequest {
-  NotificationType type = 1;
-  int64 session_id = 2;
-  repeated int64 ToUserId = 3;
+enum Op {
+  Empty = 0;
+  NewMsg = 1;
+  NewApplication = 2;
+  SynNewMsg = 3;
+  NewMsgReply = 4;
 }
 
-message PushNotificationResponse {
-  map<string, int32> result = 1;
+message Proto {
+  Op op = 1;
+  bytes body = 2;
 }
+
+message NewMsgNotification {
+  int64 session_id = 1;
+  repeated int64 to_user_id = 2;
+}
+
+message PushNotificationResponse {}
 
 service Comet {
-  rpc PushNotification(PushNotificationRequest) returns(PushNotificationResponse);
+  rpc PushNotification(Proto) returns(PushNotificationResponse);
 }

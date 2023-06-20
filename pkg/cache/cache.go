@@ -2,33 +2,18 @@ package cache
 
 import (
 	"context"
-	"fmt"
-
-	"github.com/redis/go-redis/v9"
+	"github.com/pkg/errors"
+	"time"
 )
 
-type Redis struct {
-	*redis.Client
-	c   *Config
-	ctx context.Context
-}
+var NotFoundErr = errors.New("key not found")
 
-func NewRedis(ctx context.Context, c *Config) *Redis {
-	r := &Redis{
-		c:   c,
-		ctx: ctx,
-	}
-	r.Client = redis.NewClient(&redis.Options{
-		Addr:     fmt.Sprintf("%s:%s", c.Host, c.Port),
-		Username: c.Username,
-		Password: c.Password,
-		DB:       c.DB,
-	})
-	go func() {
-		select {
-		case <-ctx.Done():
-			r.Client.Close()
-		}
-	}()
-	return r
+type Cache interface {
+	Set(ctx context.Context, key string, value interface{}, ex time.Duration) error
+	Get(ctx context.Context, key string) (interface{}, error)
+	Del(ctx context.Context, key string) error
+	Expire(ctx context.Context, key string, ex time.Duration) error
+	LPush(ctx context.Context, key string, value ...interface{}) error
+	LRange(ctx context.Context, key string, start, end int64) ([]string, error)
+	LRem(ctx context.Context, key string, start, end int64) error
 }

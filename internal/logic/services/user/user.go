@@ -22,7 +22,7 @@ const (
 	EmailType    = "email"
 )
 
-func NewUserService(cache *cache.Redis, userEntity entity.UserEntity, verifyCodeService verify_code.VerifyCodeService) UserService {
+func NewUserService(cache cache.Cache, userEntity entity.UserEntity, verifyCodeService verify_code.VerifyCodeService) UserService {
 	return &userService{
 		cache:             cache,
 		userEntity:        userEntity,
@@ -93,7 +93,7 @@ type UserService interface {
 }
 
 type userService struct {
-	cache             *cache.Redis
+	cache             cache.Cache
 	userEntity        entity.UserEntity
 	verifyCodeService verify_code.VerifyCodeService
 }
@@ -101,19 +101,19 @@ type userService struct {
 func (u *userService) Connect(ctx context.Context, userId int64) error {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
-	return u.cache.SetEx(ctx, fmt.Sprintf("CACHE_ONLINE_USER:%d", userId), "", time.Minute).Err()
+	return u.cache.Set(ctx, fmt.Sprintf(common.UserOnlineCacheKey, userId), "", time.Minute)
 }
 
 func (u *userService) DisConnect(ctx context.Context, userId int64) error {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
-	return u.cache.Del(ctx, fmt.Sprintf("CACHE_ONLINE_USER:%d", userId)).Err()
+	return u.cache.Del(ctx, fmt.Sprintf(common.UserOnlineCacheKey, userId))
 }
 
 func (u *userService) HeartBeat(ctx context.Context, userId int64) error {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
-	return u.cache.Expire(ctx, fmt.Sprintf("CACHE_ONLINE_USER:%d", userId), time.Minute).Err()
+	return u.cache.Expire(ctx, fmt.Sprintf(common.UserOnlineCacheKey, userId), time.Minute)
 }
 
 func (u *userService) SearchUser(req SearchUsersRequest) ([]OtherUserInfo, error) {

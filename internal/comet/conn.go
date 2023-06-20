@@ -15,7 +15,7 @@ func Upgrade(w http.ResponseWriter, r *http.Request) (*Conn, error) {
 	}
 	conn := &Conn{
 		Conn:  c,
-		wch:   make(chan *comet.PushNotificationRequest, 10),
+		wch:   make(chan *comet.Proto, 10),
 		close: make(chan struct{}),
 	}
 	return conn, nil
@@ -24,7 +24,7 @@ func Upgrade(w http.ResponseWriter, r *http.Request) (*Conn, error) {
 type Conn struct {
 	*websocket.Conn
 	UserId int64
-	wch    chan *comet.PushNotificationRequest
+	wch    chan *comet.Proto
 	close  chan struct{}
 }
 

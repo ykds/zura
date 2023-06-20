@@ -51,7 +51,7 @@ func GetEntity() *Entity {
 	return entity
 }
 
-func NewEntity(database *db.Database, _ *cache.Redis) {
+func NewEntity(database *db.Database, cache cache.Cache) {
 	if err := migrateTable(database); err != nil {
 		panic(err)
 	}
@@ -60,7 +60,7 @@ func NewEntity(database *db.Database, _ *cache.Redis) {
 		FriendEntity:            NewFriendEntity(database),
 		FriendApplicationEntity: NewFriendApplication(database),
 		SessionEntity:           NewSessionEntity(database),
-		MessageEntity:           NewMessageEntity(database),
+		MessageEntity:           NewMessageEntity(database, cache),
 		GroupEntity:             NewGroupEntity(database),
 	}
 }

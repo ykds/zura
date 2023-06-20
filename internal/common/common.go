@@ -12,6 +12,12 @@ var (
 	StaticPath = "/static/"
 
 	UserIdKey = "userId"
+
+	MessageCacheKey           = "message_%d"
+	GroupMessageCacheKey      = "group_message_%d"
+	UserOnlineCacheKey        = "CACHE_ONLINE_USER:%d"
+	UnackMessageCacheKey      = "NEW_MESSAGE_LIST_%d_%d"
+	UnackGroupMessageCacheKey = "NEW_GROUP_MESSAGE_LIST_%d"
 )
 
 func ParseAvatarUrl(c *gin.Context, avatar string) string {

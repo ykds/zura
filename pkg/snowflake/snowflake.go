@@ -6,9 +6,9 @@ var (
 	node *snowflake.Node
 )
 
-func InitSnowflake() {
+func InitSnowflake(node int64) {
 	var err error
-	node, err = snowflake.NewNode(1)
+	node, err = snowflake.NewNode(node)
 	if err != nil {
 		panic(err)
 	}
