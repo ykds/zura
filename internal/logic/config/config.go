@@ -1,7 +1,6 @@
 package config
 
 import (
-	"github.com/ykds/zura/internal/logic/server"
 	"github.com/ykds/zura/pkg/cache"
 	"github.com/ykds/zura/pkg/db"
 	"github.com/ykds/zura/pkg/log"
@@ -14,17 +13,25 @@ type ServerConfig struct {
 }
 
 type Config struct {
-	Server      ServerConfig            `json:"server" yaml:"server"`
-	Database    db.Config               `json:"database" yaml:"database"`
-	Cache       cache.Config            `json:"cache" yaml:"cache"`
-	Log         log.Config              `json:"log" yaml:"log"`
-	HttpServer  server.HttpServerConfig `json:"http_server" yaml:"http_server"`
+	Server      ServerConfig     `json:"server" yaml:"server"`
+	Database    db.Config        `json:"database" yaml:"database"`
+	Cache       cache.Config     `json:"cache" yaml:"cache"`
+	Log         log.Config       `json:"log" yaml:"log"`
+	HttpServer  HttpServerConfig `json:"http_server" yaml:"http_server"`
+	GrpcServer  GrpcServerConfig `json:"grpc_server" yaml:"grpc_server"`
 	CometServer struct {
 		Host string `json:"host" yaml:"host"`
 		Port string `json:"port" yaml:"port"`
 	} `json:"comet_server" yaml:"comet_server"`
-	GrpcServer server.GrpcServerConfig `json:"grpc_server" yaml:"grpc_server"`
-	Session    Session                 `json:"session" yaml:"session"`
+	Session Session `json:"session" yaml:"session"`
+}
+
+type HttpServerConfig struct {
+	Port string `json:"port"`
+}
+
+type GrpcServerConfig struct {
+	Port string `json:"port" yaml:"port"`
 }
 
 type Session struct {
@@ -33,11 +40,15 @@ type Session struct {
 
 func DefaultConfig() *Config {
 	return &Config{
-		Database:   db.DefaultConfig(),
-		Cache:      cache.DefaultConfig(),
-		Log:        log.DefaultConfig(),
-		HttpServer: server.DefaultConfig(),
-		GrpcServer: server.DefaultGrpcConfig(),
+		Database: db.DefaultConfig(),
+		Cache:    cache.DefaultConfig(),
+		Log:      log.DefaultConfig(),
+		HttpServer: HttpServerConfig{
+			Port: "8080",
+		},
+		GrpcServer: GrpcServerConfig{
+			Port: "8001",
+		},
 		Session: Session{
 			HeartbeatInterval: 60,
 		},

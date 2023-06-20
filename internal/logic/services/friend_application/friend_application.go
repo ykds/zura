@@ -2,6 +2,7 @@ package friend_application
 
 import (
 	"context"
+	"encoding/json"
 	"github.com/ykds/zura/internal/logic/codec"
 	"github.com/ykds/zura/internal/logic/entity"
 	"github.com/ykds/zura/pkg/errors"
@@ -97,11 +98,10 @@ func (f *friendApplicationService) ApplyFriend(userId int64, req ApplyRequest) e
 			return err
 		}
 	}
+	body, _ := json.Marshal(map[string]interface{}{"op": comet.Op_NewMsg})
 	_, err = f.cometClient.PushNotification(context.Background(), &comet.PushNotificationRequest{
 		ToUserId: []int64{userId},
-		Proto: &comet.Proto{
-			Op: comet.Op_NewApplication,
-		},
+		Body:     body,
 	})
 	return err
 }

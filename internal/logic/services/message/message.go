@@ -181,13 +181,10 @@ func (m messageService) PushMessage(userId int64, req PushMessageRequest) error 
 	if err != nil {
 		return err
 	}
-	body, _ := json.Marshal([]int64{session2.ID})
+	body, _ := json.Marshal(map[string]interface{}{"op": comet.Op_NewMsg, "body": map[string]interface{}{"session_id": session2.ID}})
 	_, err = m.cometClient.PushNotification(context.Background(), &comet.PushNotificationRequest{
 		ToUserId: notiUser,
-		Proto: &comet.Proto{
-			Op:   comet.Op_NewMsg,
-			Body: body,
-		},
+		Body:     body,
 	})
 	return err
 }

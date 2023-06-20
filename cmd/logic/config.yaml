@@ -28,4 +28,4 @@ comet_server:
   port: "9001"
 
 session:
-  heartbeat_interval: 30
+  heartbeat_interval: -1

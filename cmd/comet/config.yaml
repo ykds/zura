@@ -1,7 +1,10 @@
 debug: true
 
-http_port: "9000"
-grpc_port: "9001"
+http_server:
+  port: "9000"
+
+grpc_server:
+  port: "9001"
 
 logic:
   host: "127.0.0.1"

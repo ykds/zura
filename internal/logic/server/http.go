@@ -10,6 +10,7 @@ import (
 	"github.com/ykds/zura/internal/logic/api/message"
 	"github.com/ykds/zura/internal/logic/api/session"
 	"github.com/ykds/zura/internal/logic/api/user"
+	"github.com/ykds/zura/internal/logic/config"
 	"github.com/ykds/zura/pkg/log"
 	"net/http"
 	"time"
@@ -17,21 +18,9 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type HttpServerConfig struct {
-	Port string `json:"port"`
-}
-
-func DefaultConfig() HttpServerConfig {
-	return HttpServerConfig{
-		Port: "8000",
-	}
-}
-
 type HttpServer struct {
 	*gin.Engine
-	ctx        context.Context
-	cancel     context.CancelFunc
-	c          HttpServerConfig
+	c          config.HttpServerConfig
 	l          log.Logger
 	httpServer *http.Server
 	debug      bool
@@ -51,18 +40,9 @@ func WithDebug(debug bool) Option {
 	}
 }
 
-func WithConfig(c HttpServerConfig) Option {
-	return func(hs *HttpServer) {
-		hs.c = c
-	}
-}
-
-func NewHttpServer(ctx context.Context, opts ...Option) *HttpServer {
-	ctx2, cancel := context.WithCancel(ctx)
+func NewHttpServer(cfg config.HttpServerConfig, opts ...Option) *HttpServer {
 	server := &HttpServer{
-		ctx:    ctx2,
-		cancel: cancel,
-		c:      DefaultConfig(),
+		c: cfg,
 	}
 	for _, opt := range opts {
 		opt(server)
@@ -90,15 +70,6 @@ func (h *HttpServer) Run() {
 		if err := h.httpServer.ListenAndServe(); err != nil {
 			if h.l != nil {
 				h.l.Fatalf("http server exit, error: %+v", err)
-			}
-		}
-	}()
-	go func() {
-		select {
-		case <-h.ctx.Done():
-			h.Shutdown()
-			if h.l != nil {
-				h.l.Info("stop http server")
 			}
 		}
 	}()

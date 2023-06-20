@@ -14,9 +14,10 @@ func Upgrade(w http.ResponseWriter, r *http.Request) (*Conn, error) {
 		return nil, err
 	}
 	conn := &Conn{
-		Conn:  c,
-		wch:   make(chan []byte, 10),
-		close: make(chan struct{}),
+		Conn:     c,
+		wch:      make(chan []byte, 10),
+		close:    make(chan struct{}),
+		hbticker: new(time.Ticker),
 	}
 	return conn, nil
 }

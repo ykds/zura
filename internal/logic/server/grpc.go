@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"github.com/ykds/zura/internal/logic/config"
 	"github.com/ykds/zura/internal/logic/services"
 	"github.com/ykds/zura/internal/logic/services/message"
 	"github.com/ykds/zura/internal/middleware"
@@ -17,17 +18,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-type GrpcServerConfig struct {
-	Port string `json:"port" yaml:"port"`
-}
-
-func DefaultGrpcConfig() GrpcServerConfig {
-	return GrpcServerConfig{
-		Port: "8001",
-	}
-}
-
-func NewGrpcServer(c GrpcServerConfig, service services.Service) *grpc.Server {
+func NewGrpcServer(c config.GrpcServerConfig, service services.Service) *grpc.Server {
 	srv := grpc.NewServer(
 		grpc.ChainUnaryInterceptor(
 			recovery.UnaryServerInterceptor(),

@@ -2,7 +2,6 @@ package comet
 
 import (
 	"context"
-	"encoding/json"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/logging"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/recovery"
 	"github.com/ykds/zura/internal/middleware"
@@ -27,7 +26,7 @@ func NewGrpcServer(srv *Server) *grpc.Server {
 			Timeout:               3 * time.Second,
 		}))
 	comet.RegisterCometServer(server, &GrpcServer{srv: srv})
-	listen, err := net.Listen("tcp", ":"+srv.cfg.GrpcPort)
+	listen, err := net.Listen("tcp", ":"+srv.cfg.GrpcServer.Port)
 	if err != nil {
 		panic(err)
 	}
@@ -51,8 +50,7 @@ func (g *GrpcServer) PushNotification(ctx context.Context, request *comet.PushNo
 	for _, id := range request.ToUserId {
 		conn, ok := g.srv.onlineUsers[id]
 		if ok {
-			content, _ := json.Marshal(request.Proto)
-			conn.wch <- content
+			conn.wch <- request.Body
 		}
 	}
 	return &comet.PushNotificationResponse{}, nil

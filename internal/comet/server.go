@@ -38,7 +38,7 @@ func NewServer(c *Config) *Server {
 	s := &Server{
 		cfg: c,
 		httpServer: http.Server{
-			Addr:    ":" + c.HttpPort,
+			Addr:    ":" + c.HttpServer.Port,
 			Handler: engine,
 		},
 		onlineUsers: make(map[int64]*Conn),
@@ -86,7 +86,9 @@ func (s *Server) handleWebsocket(c *gin.Context) {
 	}
 	go s.Recv(conn)
 	go s.Write(conn)
-	go s.CheckHeartbeat(conn)
+	if !cfg.Debug {
+		go s.CheckHeartbeat(conn)
+	}
 }
 
 func (s *Server) online(userId int64, conn *Conn) error {
@@ -117,6 +119,16 @@ func (s *Server) offline(userId int64) error {
 	return nil
 }
 
+type Request struct {
+	Op   comet.Op        `json:"op"`
+	Data json.RawMessage `json:"data"`
+}
+
+type Response struct {
+	Op   comet.Op    `json:"op"`
+	Data interface{} `json:"data"`
+}
+
 func (s *Server) Recv(conn *Conn) {
 	defer func() {
 		if err := recover(); err != nil {
@@ -134,7 +146,7 @@ func (s *Server) Recv(conn *Conn) {
 
 		switch message {
 		case websocket.TextMessage:
-			req := comet.Proto{}
+			req := Request{}
 			err = json.Unmarshal(content, &req)
 			if err != nil {
 				resp := response.GetResponse(errors.Wrap(errors.New(errors.ParameterErrorStatus), err.Error()), nil)
@@ -144,8 +156,13 @@ func (s *Server) Recv(conn *Conn) {
 			}
 			switch req.Op {
 			case comet.Op_SynNewMsg:
-				result, err := s.syncMessage(conn.UserId, req.Body)
-				resp := response.GetResponse(errors.Wrap(errors.New(codec.SyncNewMessageFailedCode), err.Error()), result)
+				result, err := s.syncMessage(conn.UserId, req.Data)
+				var resp response.Resp
+				if err != nil {
+					resp = response.GetResponse(errors.Wrap(errors.New(codec.SyncNewMessageFailedCode), err.Error()), nil)
+				} else {
+					resp = response.GetResponse(nil, result)
+				}
 				reply, _ := json.Marshal(resp)
 				conn.wch <- reply
 			case comet.Op_Heartbeat:
@@ -218,7 +235,7 @@ type SyncMessageReq struct {
 	Timestamp int64 `json:"timestamp"`
 }
 
-func (s *Server) syncMessage(userId int64, body []byte) (*comet.Proto, error) {
+func (s *Server) syncMessage(userId int64, body []byte) (*Response, error) {
 	req := SyncMessageReq{}
 	err := json.Unmarshal(body, &req)
 	if err != nil {
@@ -234,21 +251,13 @@ func (s *Server) syncMessage(userId int64, body []byte) (*comet.Proto, error) {
 		log.Errorf("User[%d] list new message error, err: %+v", userId, err)
 		return nil, err
 	}
-	result := []byte{}
-	if listNewMessage.Data != nil {
-		result, err = json.Marshal(listNewMessage.Data)
-		if err != nil {
-			log.Errorf("User[%d] json marshal new message error, err: %+v", userId, err)
-			return nil, err
-		}
-	}
-	return &comet.Proto{
+	return &Response{
 		Op:   comet.Op_NewMsgReply,
-		Body: result,
+		Data: listNewMessage.Data,
 	}, nil
 }
 
-func (s *Server) heartbeat(userId int64) (*comet.Proto, error) {
+func (s *Server) heartbeat(userId int64) (*Response, error) {
 	i := 0
 	for ; i < 3; i++ {
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
@@ -263,7 +272,7 @@ func (s *Server) heartbeat(userId int64) (*comet.Proto, error) {
 	if i == 3 {
 		return nil, errors.New(codec.HeartBeatFailedCode)
 	}
-	return &comet.Proto{
+	return &Response{
 		Op: comet.Op_NewMsgReply,
 	}, nil
 }

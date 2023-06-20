@@ -14,14 +14,9 @@ enum Op {
   HeartbeatReply = 6;
 }
 
-message Proto {
-  Op op = 1;
-  bytes body = 2;
-}
-
 message PushNotificationRequest {
   repeated int64 to_user_id = 1;
-  Proto proto = 2;
+  bytes body = 2;
 }
 
 message PushNotificationResponse {}

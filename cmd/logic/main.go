@@ -36,13 +36,11 @@ func main() {
 		zap.WithLumberjack())
 	log.SetGlobalLogger(l)
 
-	ctx, cancel := context.WithCancel(context.Background())
-
 	database := db.New(&config.GetConfig().Database, db.WithDebug(config.GetConfig().Server.Debug))
 	caches := cache.NewMemoryCache()
 	entity.NewEntity(database, caches)
 
-	ctx2, cancel2 := context.WithTimeout(ctx, 2*time.Second)
+	ctx2, cancel2 := context.WithTimeout(context.Background(), 2*time.Second)
 	cometConn, err := grpc.DialContext(ctx2, fmt.Sprintf("%s:%s", config.GetConfig().CometServer.Host, config.GetConfig().CometServer.Port), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Panicf("new comet grpc client failed, err: %+v", err)
@@ -52,8 +50,7 @@ func main() {
 
 	services.NewServices(caches, entity.GetEntity(), cometClient)
 
-	httpServer := server.NewHttpServer(ctx,
-		server.WithConfig(config.GetConfig().HttpServer),
+	httpServer := server.NewHttpServer(config.GetConfig().HttpServer,
 		server.WithLogger(l),
 		server.WithDebug(config.GetConfig().Server.Debug))
 	httpServer.Run()
@@ -66,7 +63,7 @@ func main() {
 	select {
 	case <-sig:
 		logicGrpcSrv.GracefulStop()
-		cancel()
+		httpServer.Shutdown()
 	}
 	log.Info("exit.")
 }

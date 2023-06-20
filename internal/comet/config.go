@@ -9,19 +9,31 @@ func GetConfig() *Config {
 }
 
 type Config struct {
-	Debug    bool       `json:"debug" yaml:"debug"`
-	HttpPort string     `json:"http_port" yaml:"http_port"`
-	GrpcPort string     `json:"grpc_port" yaml:"grpc_port"`
-	Logic    Logic      `json:"logic" yaml:"logic"`
-	Log      log.Config `json:"log" yaml:"log"`
-	Session  Session    `json:"session" yaml:"session"`
+	Debug      bool             `json:"debug" yaml:"debug"`
+	HttpServer HttpServerConfig `json:"http_server" yaml:"http_server"`
+	GrpcServer GrpcServerConfig `json:"grpc_server" yaml:"grpc_server"`
+	Logic      Logic            `json:"logic" yaml:"logic"`
+	Log        log.Config       `json:"log" yaml:"log"`
+	Session    Session          `json:"session" yaml:"session"`
+}
+
+type HttpServerConfig struct {
+	Port string `json:"port"`
+}
+
+type GrpcServerConfig struct {
+	Port string `json:"port" yaml:"port"`
 }
 
 func DefaultConfig() *Config {
 	return &Config{
-		Debug:    true,
-		HttpPort: "9000",
-		GrpcPort: "9001",
+		Debug: true,
+		HttpServer: HttpServerConfig{
+			Port: "9080",
+		},
+		GrpcServer: GrpcServerConfig{
+			Port: "9001",
+		},
 		Logic: Logic{
 			Host: "localhost",
 			Port: "8001",
