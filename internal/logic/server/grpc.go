@@ -6,6 +6,7 @@ import (
 	"github.com/ykds/zura/internal/logic/services/message"
 	"github.com/ykds/zura/internal/middleware"
 	"github.com/ykds/zura/pkg/log"
+	"github.com/ykds/zura/pkg/token"
 	"github.com/ykds/zura/proto/logic"
 	"google.golang.org/grpc/keepalive"
 	"net"
@@ -60,11 +61,18 @@ type LogicGrpcServer struct {
 	srv services.Service
 }
 
+func (l LogicGrpcServer) Auth(ctx context.Context, request *logic.AuthRequest) (*logic.AuthResponse, error) {
+	userId, err := token.VerifyToken(request.Token)
+	if err != nil {
+		return &logic.AuthResponse{}, err
+	}
+	return &logic.AuthResponse{UserId: userId}, nil
+}
+
 func (l LogicGrpcServer) ListNewMessage(ctx context.Context, request *logic.ListNewMessageRequest) (*logic.ListNewMessageResponse, error) {
 	newMessage, err := l.srv.MessageService.ListNewMessage(request.UserId, message.ListMessageRequest{
 		SessionId: request.SessionId,
 		Timestamp: request.Timestamp,
-		Limit:     int(request.Limit),
 	})
 	if err != nil {
 		return &logic.ListNewMessageResponse{}, err

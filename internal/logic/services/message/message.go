@@ -177,13 +177,17 @@ func (m messageService) PushMessage(userId int64, req PushMessageRequest) error 
 	default:
 		return errors.WithStackByCode(codec.UnSupportSessionType)
 	}
-	body, _ := json.Marshal(comet.NewMsgNotification{
-		SessionId: req.SessionId,
-		ToUserId:  notiUser,
-	})
-	_, err = m.cometClient.PushNotification(context.Background(), &comet.Proto{
-		Op:   comet.Op_NewMsg,
-		Body: body,
+	session2, err := m.sessionEntity.GetUserSession(map[string]interface{}{"user_id": session.TargetId, "target_id": userId})
+	if err != nil {
+		return err
+	}
+	body, _ := json.Marshal([]int64{session2.ID})
+	_, err = m.cometClient.PushNotification(context.Background(), &comet.PushNotificationRequest{
+		ToUserId: notiUser,
+		Proto: &comet.Proto{
+			Op:   comet.Op_NewMsg,
+			Body: body,
+		},
 	})
 	return err
 }

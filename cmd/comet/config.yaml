@@ -9,8 +9,11 @@ logic:
 
 log:
   level: info
-  filename: "./logs/zura.log"
+  filename: "./logs/comet.log"
   max_age: 7
   max_size: 10
   max_backups: 5
   compress: false
+
+session:
+  heartbeat_interval: 30

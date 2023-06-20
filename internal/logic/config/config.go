@@ -24,6 +24,11 @@ type Config struct {
 		Port string `json:"port" yaml:"port"`
 	} `json:"comet_server" yaml:"comet_server"`
 	GrpcServer server.GrpcServerConfig `json:"grpc_server" yaml:"grpc_server"`
+	Session    Session                 `json:"session" yaml:"session"`
+}
+
+type Session struct {
+	HeartbeatInterval int8 `json:"heartbeat_interval" yaml:"heartbeat_interval"`
 }
 
 func DefaultConfig() *Config {
@@ -33,6 +38,9 @@ func DefaultConfig() *Config {
 		Log:        log.DefaultConfig(),
 		HttpServer: server.DefaultConfig(),
 		GrpcServer: server.DefaultGrpcConfig(),
+		Session: Session{
+			HeartbeatInterval: 60,
+		},
 	}
 }
 

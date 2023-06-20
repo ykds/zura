@@ -17,7 +17,7 @@ database:
 
 log:
   level: info
-  filename: "./logs/zura.log"
+  filename: "./logs/logic.log"
   max_age: 7
   max_size: 10
   max_backups: 5
@@ -26,3 +26,6 @@ log:
 comet_server:
   host: "127.0.0.1"
   port: "9001"
+
+session:
+  heartbeat_interval: 30

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/ykds/zura/internal/common"
 	"github.com/ykds/zura/internal/logic/codec"
+	"github.com/ykds/zura/internal/logic/config"
 	"github.com/ykds/zura/internal/logic/entity"
 	"github.com/ykds/zura/internal/logic/services/verify_code"
 	"github.com/ykds/zura/pkg/cache"
@@ -101,7 +102,7 @@ type userService struct {
 func (u *userService) Connect(ctx context.Context, userId int64) error {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
-	return u.cache.Set(ctx, fmt.Sprintf(common.UserOnlineCacheKey, userId), "", time.Minute)
+	return u.cache.Set(ctx, fmt.Sprintf(common.UserOnlineCacheKey, userId), "", time.Duration(config.GetConfig().Session.HeartbeatInterval)*time.Second)
 }
 
 func (u *userService) DisConnect(ctx context.Context, userId int64) error {
@@ -113,7 +114,7 @@ func (u *userService) DisConnect(ctx context.Context, userId int64) error {
 func (u *userService) HeartBeat(ctx context.Context, userId int64) error {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
-	return u.cache.Expire(ctx, fmt.Sprintf(common.UserOnlineCacheKey, userId), time.Minute)
+	return u.cache.Expire(ctx, fmt.Sprintf(common.UserOnlineCacheKey, userId), time.Duration(config.GetConfig().Session.HeartbeatInterval)*time.Second)
 }
 
 func (u *userService) SearchUser(req SearchUsersRequest) ([]OtherUserInfo, error) {

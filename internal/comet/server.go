@@ -5,7 +5,8 @@ import (
 	"encoding/json"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
-	"github.com/ykds/zura/internal/common"
+	"github.com/ykds/zura/internal/comet/codec"
+	"github.com/ykds/zura/pkg/errors"
 	"github.com/ykds/zura/pkg/log"
 	"github.com/ykds/zura/pkg/response"
 	"github.com/ykds/zura/proto/comet"
@@ -17,29 +18,10 @@ import (
 	"time"
 )
 
-var cfg = new(Config)
-
-func GetConfig() *Config {
-	return cfg
-}
-
-type Config struct {
-	Debug    bool       `json:"debug" yaml:"debug"`
-	HttpPort string     `json:"http_port" yaml:"http_port"`
-	GrpcPort string     `json:"grpc_port" yaml:"grpc_port"`
-	Logic    Logic      `json:"logic" yaml:"logic"`
-	Log      log.Config `json:"log" yaml:"log"`
-}
-
-type Logic struct {
-	Host string `json:"host" yaml:"host"`
-	Port string `json:"port" yaml:"port"`
-}
-
 type Server struct {
+	m           sync.RWMutex
 	cfg         *Config
 	logicClient logic.LogicClient
-	m           sync.RWMutex
 	httpServer  http.Server
 	onlineUsers map[int64]*Conn
 }
@@ -87,7 +69,13 @@ func (s *Server) handleWebsocket(c *gin.Context) {
 	defer func() {
 		response.HttpResponse(c, err, nil)
 	}()
-	userId := c.GetInt64(common.UserIdKey)
+	auth, err := s.logicClient.Auth(context.Background(), &logic.AuthRequest{
+		Token: c.GetHeader("token"),
+	})
+	if err != nil {
+		return
+	}
+	userId := auth.UserId
 	conn, err := Upgrade(c.Writer, c.Request)
 	if err != nil {
 		return
@@ -98,6 +86,7 @@ func (s *Server) handleWebsocket(c *gin.Context) {
 	}
 	go s.Recv(conn)
 	go s.Write(conn)
+	go s.CheckHeartbeat(conn)
 }
 
 func (s *Server) online(userId int64, conn *Conn) error {
@@ -128,12 +117,6 @@ func (s *Server) offline(userId int64) error {
 	return nil
 }
 
-type SyncMessageRequest struct {
-	SessionId int64 `form:"session_id"`
-	Timestamp int64 `form:"timestamp"`
-	Limit     int   `form:"limit"`
-}
-
 func (s *Server) Recv(conn *Conn) {
 	defer func() {
 		if err := recover(); err != nil {
@@ -145,48 +128,37 @@ func (s *Server) Recv(conn *Conn) {
 		if err != nil {
 			_ = conn.CloseConn()
 			_ = s.offline(conn.UserId)
-			log.Debugf("User[%d] err closed connection, error: %+v", conn.UserId, err)
+			log.Errorf("User[%d] err closed connection, error: %+v", conn.UserId, err)
 			return
 		}
 
 		switch message {
 		case websocket.TextMessage:
-			p := comet.Proto{}
-			err = json.Unmarshal(content, &p)
+			req := comet.Proto{}
+			err = json.Unmarshal(content, &req)
 			if err != nil {
-				log.Errorf("User[%d] request error, raw content: %s, err: %+v", conn.UserId, string(content), err)
+				resp := response.GetResponse(errors.Wrap(errors.New(errors.ParameterErrorStatus), err.Error()), nil)
+				reply, _ := json.Marshal(resp)
+				conn.wch <- reply
 				continue
 			}
-			switch p.Op {
+			switch req.Op {
 			case comet.Op_SynNewMsg:
-				req := comet.SyncMessageReq{}
-				err := json.Unmarshal(p.Body, &req)
+				result, err := s.syncMessage(conn.UserId, req.Body)
+				resp := response.GetResponse(errors.Wrap(errors.New(codec.SyncNewMessageFailedCode), err.Error()), result)
+				reply, _ := json.Marshal(resp)
+				conn.wch <- reply
+			case comet.Op_Heartbeat:
+				result, err := s.heartbeat(conn.UserId)
+				resp := response.GetResponse(err, result)
+				reply, _ := json.Marshal(resp)
+				_ = conn.WriteMessage(websocket.TextMessage, reply)
 				if err != nil {
-					log.Errorf("User[%d] sync mess request error, raw content: %s, err: %+v", conn.UserId, string(p.Body), err)
-					continue
+					_ = conn.CloseConn()
+					_ = s.offline(conn.UserId)
+					return
 				}
-				listNewMessage, err := s.logicClient.ListNewMessage(context.Background(), &logic.ListNewMessageRequest{
-					UserId:    conn.UserId,
-					SessionId: req.SessionId,
-					Timestamp: req.Timestamp,
-					Limit:     req.Limit,
-				})
-				if err != nil {
-					log.Errorf("User[%d] list new message error, err: %+v", conn.UserId, err)
-					continue
-				}
-				result := []byte{}
-				if listNewMessage.Data != nil {
-					result, err = json.Marshal(listNewMessage.Data)
-					if err != nil {
-						log.Errorf("User[%d] json marshal new message error, err: %+v", conn.UserId, err)
-						continue
-					}
-				}
-				conn.wch <- &comet.Proto{
-					Op:   comet.Op_NewMsgReply,
-					Body: result,
-				}
+				conn.hbticker.Reset(time.Duration(s.cfg.Session.HeartbeatInterval) * time.Second)
 			}
 		case websocket.CloseMessage:
 			_ = conn.CloseConn()
@@ -194,24 +166,6 @@ func (s *Server) Recv(conn *Conn) {
 			log.Debugf("User[%d] initiative closed connection", conn.UserId)
 			return
 		case websocket.PingMessage:
-			i := 0
-			for ; i < 3; i++ {
-				ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-				_, err := s.logicClient.HeartBeat(ctx, &logic.HeartBeatRequest{UserId: conn.UserId})
-				if err != nil {
-					cancel()
-					continue
-				}
-				cancel()
-				_ = conn.WriteMessage(websocket.PongMessage, nil)
-				break
-			}
-			if i == 3 {
-				_ = conn.CloseConn()
-				_ = s.offline(conn.UserId)
-				log.Debugf("User[%d] heartbeat failed, err: %+V", conn.UserId, err)
-				return
-			}
 		}
 	}
 }
@@ -225,9 +179,7 @@ func (s *Server) Write(conn *Conn) {
 	for {
 		select {
 		case message := <-conn.wch:
-			log.Debugf("recv message %+v", message)
-			data, _ := json.Marshal(message)
-			err := conn.WriteMessage(websocket.TextMessage, data)
+			err := conn.WriteMessage(websocket.TextMessage, message)
 			if err != nil {
 				log.Errorf("Write message to User[%d] failed, err: %+v", conn.UserId, err)
 				continue
@@ -236,9 +188,21 @@ func (s *Server) Write(conn *Conn) {
 			err := conn.WriteMessage(websocket.CloseMessage, nil)
 			if err != nil {
 				log.Errorf("User[%d] connection closed by server", conn.UserId)
-				return
 			}
-			_ = s.offline(conn.UserId)
+			return
+		}
+	}
+}
+
+func (s *Server) CheckHeartbeat(conn *Conn) {
+	conn.hbticker = time.NewTicker(time.Duration(s.cfg.Session.HeartbeatInterval) * time.Second)
+	for {
+		select {
+		case <-conn.hbticker.C:
+			_ = conn.Close()
+			log.Debugf("User[%d] heartbeat timeout", conn.UserId)
+		case <-conn.close:
+			return
 		}
 	}
 }
@@ -247,4 +211,59 @@ func (s *Server) Shutdown() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 	return s.httpServer.Shutdown(ctx)
+}
+
+type SyncMessageReq struct {
+	SessionId int64 `json:"session_id"`
+	Timestamp int64 `json:"timestamp"`
+}
+
+func (s *Server) syncMessage(userId int64, body []byte) (*comet.Proto, error) {
+	req := SyncMessageReq{}
+	err := json.Unmarshal(body, &req)
+	if err != nil {
+		log.Errorf("User[%d] sync mess request error, raw content: %s, err: %+v", userId, string(body), err)
+		return nil, err
+	}
+	listNewMessage, err := s.logicClient.ListNewMessage(context.Background(), &logic.ListNewMessageRequest{
+		UserId:    userId,
+		SessionId: req.SessionId,
+		Timestamp: req.Timestamp,
+	})
+	if err != nil {
+		log.Errorf("User[%d] list new message error, err: %+v", userId, err)
+		return nil, err
+	}
+	result := []byte{}
+	if listNewMessage.Data != nil {
+		result, err = json.Marshal(listNewMessage.Data)
+		if err != nil {
+			log.Errorf("User[%d] json marshal new message error, err: %+v", userId, err)
+			return nil, err
+		}
+	}
+	return &comet.Proto{
+		Op:   comet.Op_NewMsgReply,
+		Body: result,
+	}, nil
+}
+
+func (s *Server) heartbeat(userId int64) (*comet.Proto, error) {
+	i := 0
+	for ; i < 3; i++ {
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		_, err := s.logicClient.HeartBeat(ctx, &logic.HeartBeatRequest{UserId: userId})
+		if err != nil {
+			cancel()
+			continue
+		}
+		cancel()
+		break
+	}
+	if i == 3 {
+		return nil, errors.New(codec.HeartBeatFailedCode)
+	}
+	return &comet.Proto{
+		Op: comet.Op_NewMsgReply,
+	}, nil
 }

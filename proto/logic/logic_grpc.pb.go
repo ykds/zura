@@ -22,6 +22,7 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type LogicClient interface {
+	Auth(ctx context.Context, in *AuthRequest, opts ...grpc.CallOption) (*AuthResponse, error)
 	Connect(ctx context.Context, in *ConnectionRequest, opts ...grpc.CallOption) (*ConnectionResponse, error)
 	Disconnect(ctx context.Context, in *DisconnectRequest, opts ...grpc.CallOption) (*DisconnectResponse, error)
 	HeartBeat(ctx context.Context, in *HeartBeatRequest, opts ...grpc.CallOption) (*HeartBeatResponse, error)
@@ -35,6 +36,15 @@ type logicClient struct {
 
 func NewLogicClient(cc grpc.ClientConnInterface) LogicClient {
 	return &logicClient{cc}
+}
+
+func (c *logicClient) Auth(ctx context.Context, in *AuthRequest, opts ...grpc.CallOption) (*AuthResponse, error) {
+	out := new(AuthResponse)
+	err := c.cc.Invoke(ctx, "/logic.Logic/Auth", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *logicClient) Connect(ctx context.Context, in *ConnectionRequest, opts ...grpc.CallOption) (*ConnectionResponse, error) {
@@ -86,6 +96,7 @@ func (c *logicClient) ListNewApplications(ctx context.Context, in *ListNewApplic
 // All implementations must embed UnimplementedLogicServer
 // for forward compatibility
 type LogicServer interface {
+	Auth(context.Context, *AuthRequest) (*AuthResponse, error)
 	Connect(context.Context, *ConnectionRequest) (*ConnectionResponse, error)
 	Disconnect(context.Context, *DisconnectRequest) (*DisconnectResponse, error)
 	HeartBeat(context.Context, *HeartBeatRequest) (*HeartBeatResponse, error)
@@ -98,6 +109,9 @@ type LogicServer interface {
 type UnimplementedLogicServer struct {
 }
 
+func (UnimplementedLogicServer) Auth(context.Context, *AuthRequest) (*AuthResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Auth not implemented")
+}
 func (UnimplementedLogicServer) Connect(context.Context, *ConnectionRequest) (*ConnectionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Connect not implemented")
 }
@@ -124,6 +138,24 @@ type UnsafeLogicServer interface {
 
 func RegisterLogicServer(s grpc.ServiceRegistrar, srv LogicServer) {
 	s.RegisterService(&Logic_ServiceDesc, srv)
+}
+
+func _Logic_Auth_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AuthRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LogicServer).Auth(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/logic.Logic/Auth",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LogicServer).Auth(ctx, req.(*AuthRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _Logic_Connect_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -223,6 +255,10 @@ var Logic_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "logic.Logic",
 	HandlerType: (*LogicServer)(nil),
 	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "Auth",
+			Handler:    _Logic_Auth_Handler,
+		},
 		{
 			MethodName: "Connect",
 			Handler:    _Logic_Connect_Handler,

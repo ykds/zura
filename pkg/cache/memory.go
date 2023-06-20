@@ -83,6 +83,7 @@ func (m Memory) Expire(ctx context.Context, key string, ex time.Duration) error 
 }
 
 func NewMemoryCache() Cache {
+	globalMemCache = new(Memory)
 	globalMemCache.client = cache.New(30*time.Second, time.Minute)
 	return globalMemCache
 }

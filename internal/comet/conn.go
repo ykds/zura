@@ -2,8 +2,8 @@ package comet
 
 import (
 	"github.com/gorilla/websocket"
-	"github.com/ykds/zura/proto/comet"
 	"net/http"
+	"time"
 )
 
 var upgrader = websocket.Upgrader{}
@@ -15,7 +15,7 @@ func Upgrade(w http.ResponseWriter, r *http.Request) (*Conn, error) {
 	}
 	conn := &Conn{
 		Conn:  c,
-		wch:   make(chan *comet.Proto, 10),
+		wch:   make(chan []byte, 10),
 		close: make(chan struct{}),
 	}
 	return conn, nil
@@ -23,9 +23,10 @@ func Upgrade(w http.ResponseWriter, r *http.Request) (*Conn, error) {
 
 type Conn struct {
 	*websocket.Conn
-	UserId int64
-	wch    chan *comet.Proto
-	close  chan struct{}
+	UserId   int64
+	wch      chan []byte
+	close    chan struct{}
+	hbticker *time.Ticker
 }
 
 func (c *Conn) CloseConn() error {

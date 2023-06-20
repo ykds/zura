@@ -59,7 +59,16 @@ message ApplicationItem {
   int64 updated_time = 6;
 }
 
+message AuthRequest {
+  string token = 1;
+}
+
+message AuthResponse {
+  int64 user_id = 1;
+}
+
 service Logic {
+  rpc Auth(AuthRequest) returns (AuthResponse);
   rpc Connect(ConnectionRequest) returns (ConnectionResponse);
   rpc Disconnect(DisconnectRequest) returns (DisconnectResponse);
   rpc HeartBeat(HeartBeatRequest) returns (HeartBeatResponse);

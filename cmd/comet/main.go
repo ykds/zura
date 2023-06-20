@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"github.com/ykds/zura/internal/comet"
+	"github.com/ykds/zura/pkg/cache"
 	cfg "github.com/ykds/zura/pkg/config"
 	"github.com/ykds/zura/pkg/log"
 	"github.com/ykds/zura/pkg/log/zap"
@@ -24,6 +25,8 @@ func main() {
 		zap.WithDebug(comet.GetConfig().Debug),
 		zap.WithLumberjack())
 	log.SetGlobalLogger(l)
+
+	cache.NewMemoryCache()
 
 	server := comet.NewServer(comet.GetConfig())
 	grpcServer := comet.NewGrpcServer(server)

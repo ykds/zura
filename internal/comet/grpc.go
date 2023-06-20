@@ -2,6 +2,7 @@ package comet
 
 import (
 	"context"
+	"encoding/json"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/logging"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/recovery"
 	"github.com/ykds/zura/internal/middleware"
@@ -50,7 +51,8 @@ func (g *GrpcServer) PushNotification(ctx context.Context, request *comet.PushNo
 	for _, id := range request.ToUserId {
 		conn, ok := g.srv.onlineUsers[id]
 		if ok {
-			conn.wch <- request
+			content, _ := json.Marshal(request.Proto)
+			conn.wch <- content
 		}
 	}
 	return &comet.PushNotificationResponse{}, nil
