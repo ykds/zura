@@ -14,6 +14,7 @@ const (
 	PhoneEmptyStatus
 	EmailEmptyStatus
 	UsernameEmptyStatus
+	YearUpdateLimitStatus
 )
 
 func init() {
@@ -27,4 +28,5 @@ func init() {
 	errors.NewCode(PhoneEmptyStatus, "手机号不能为空")
 	errors.NewCode(EmailEmptyStatus, "邮箱不能为空")
 	errors.NewCode(UsernameEmptyStatus, "用户名不能为空")
+	errors.NewCode(YearUpdateLimitStatus, "%s一年只能更新一次")
 }

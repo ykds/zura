@@ -50,10 +50,9 @@ func (r Redis) Expire(ctx context.Context, key string, ex time.Duration) error {
 
 var _ Cache = (*Redis)(nil)
 
-func NewRedis(ctx context.Context, c *Config) Cache {
+func NewRedis(c *Config) Cache {
 	r := &Redis{
-		c:   c,
-		ctx: ctx,
+		c: c,
 	}
 	r.client = redis.NewClient(&redis.Options{
 		Addr:     fmt.Sprintf("%s:%s", c.Host, c.Port),
@@ -61,11 +60,9 @@ func NewRedis(ctx context.Context, c *Config) Cache {
 		Password: c.Password,
 		DB:       c.DB,
 	})
-	go func() {
-		select {
-		case <-ctx.Done():
-			r.client.Close()
-		}
-	}()
 	return r
+}
+
+func (r Redis) Close() error {
+	return r.client.Close()
 }

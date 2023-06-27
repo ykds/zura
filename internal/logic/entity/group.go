@@ -15,6 +15,7 @@ const (
 
 type Group struct {
 	BaseModel
+	No      string `json:"no"`
 	Name    string `json:"name"`
 	Avatar  string `json:"avatar"`
 	OwnerId int64  `json:"owner_id"`
@@ -43,15 +44,19 @@ func NewGroupEntity(db *db.Database) GroupEntity {
 }
 
 type GroupEntity interface {
+	Transaction
 	GetGroup(id int64) (Group, error)
 	ListGroups(userId int64) ([]Group, error)
 	ListGroupById(id []int64) ([]Group, error)
-	CreateGroup(g Group) (int64, error)
+	SearchGroup(where map[string]interface{}) ([]Group, error)
+	CreateGroup(g *Group) (int64, error)
+	CreateGroupTx(tx *gorm.DB, g *Group) (int64, error)
 	UpdateGroup(id int64, g Group) error
 	DeleteGroup(id int64) error
 
 	GetGroupMember(groupId, memberId int64) (GroupMember, error)
 	ListGroupMembers(groupId int64) ([]GroupMember, error)
+	AddGroupMemberTx(tx *gorm.DB, member GroupMember) error
 	AddGroupMember(member GroupMember) error
 	RemoveGroupMember(groupId int64, memberId int64) error
 	ChangeGroupMemberRole(groupId int64, memberId int64, role int8) error
@@ -61,6 +66,15 @@ type GroupEntity interface {
 
 type groupEntity struct {
 	baseEntity
+}
+
+func (g2 groupEntity) SearchGroup(where map[string]interface{}) ([]Group, error) {
+	g := make([]Group, 0)
+	err := g2.db.Where(where).First(&g).Error
+	if err != nil {
+		err = errors.WithStack(err)
+	}
+	return g, err
 }
 
 func (g2 groupEntity) GetGroupMember(groupId, memberId int64) (GroupMember, error) {
@@ -93,14 +107,14 @@ func (g2 groupEntity) ListGroupById(id []int64) ([]Group, error) {
 	return groups, err
 }
 
-func (g2 groupEntity) CreateGroup(g Group) (int64, error) {
-	err := g2.db.Transaction(func(tx *gorm.DB) error {
+func (g2 groupEntity) CreateGroupTx(tx *gorm.DB, g *Group) (int64, error) {
+	err := tx.Transaction(func(t *gorm.DB) error {
 		g.ID = snowflake.NewId()
-		err := tx.Create(&g).Error
+		err := t.Create(g).Error
 		if err != nil {
 			return err
 		}
-		return tx.Create(&GroupMember{
+		return t.Create(&GroupMember{
 			GroupId: g.ID,
 			UserId:  g.OwnerId,
 			Role:    RoleOwner,
@@ -110,6 +124,10 @@ func (g2 groupEntity) CreateGroup(g Group) (int64, error) {
 		err = errors.WithStack(err)
 	}
 	return g.ID, err
+}
+
+func (g2 groupEntity) CreateGroup(g *Group) (int64, error) {
+	return g2.CreateGroupTx(g2.db.DB, g)
 }
 
 func (g2 groupEntity) UpdateGroup(id int64, g Group) error {
@@ -161,16 +179,20 @@ func (g2 groupEntity) GetGroup(id int64) (Group, error) {
 	return g, err
 }
 
-func (g2 groupEntity) AddGroupMember(member GroupMember) error {
+func (g2 groupEntity) AddGroupMemberTx(tx *gorm.DB, member GroupMember) error {
 	_, err := g2.GetGroup(member.GroupId)
 	if err != nil {
 		return err
 	}
-	err = g2.db.Create(&member).Error
+	err = tx.Create(&member).Error
 	if err != nil {
 		err = errors.WithStack(err)
 	}
 	return err
+}
+
+func (g2 groupEntity) AddGroupMember(member GroupMember) error {
+	return g2.AddGroupMemberTx(g2.db.DB, member)
 }
 
 func (g2 groupEntity) RemoveGroupMember(groupId int64, memberId int64) error {

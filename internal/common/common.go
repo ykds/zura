@@ -18,6 +18,9 @@ var (
 	UserOnlineCacheKey        = "CACHE_ONLINE_USER:%d"
 	UnackMessageCacheKey      = "NEW_MESSAGE_LIST_%d_%d"
 	UnackGroupMessageCacheKey = "NEW_GROUP_MESSAGE_LIST_%d"
+
+	UpdateUserPhoneCacheKey = "UPDATE_USER_PHONE_%d"
+	UpdateUserEmailCacheKey = "UPDATE_USER_EMAIL_%d"
 )
 
 func ParseAvatarUrl(c *gin.Context, avatar string) string {

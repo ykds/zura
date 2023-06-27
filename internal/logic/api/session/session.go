@@ -2,6 +2,7 @@ package session
 
 import (
 	"github.com/ykds/zura/internal/common"
+	"github.com/ykds/zura/internal/logic/entity"
 	"github.com/ykds/zura/internal/logic/services"
 	"github.com/ykds/zura/internal/logic/services/session"
 	"github.com/ykds/zura/pkg/errors"
@@ -24,6 +25,7 @@ func CreateSession(c *gin.Context) {
 		err = errors.WithMessage(errors.New(errors.ParameterErrorStatus), err.Error())
 		return
 	}
+	req.SessionType = entity.PointSession
 	resp, err = services.GetServices().SessionService.CreateSession(c.GetInt64(common.UserIdKey), req)
 }
 

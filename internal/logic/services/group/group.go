@@ -4,12 +4,14 @@ import (
 	"github.com/ykds/zura/internal/logic/codec"
 	"github.com/ykds/zura/internal/logic/entity"
 	"github.com/ykds/zura/pkg/errors"
+	"github.com/ykds/zura/pkg/random"
 )
 
-func NewGroupServer(groupEntity entity.GroupEntity, userEntity entity.UserEntity) GroupService {
+func NewGroupServer(groupEntity entity.GroupEntity, userEntity entity.UserEntity, sessionEntity entity.SessionEntity) GroupService {
 	return &groupService{
-		groupEntity: groupEntity,
-		userEntity:  userEntity,
+		groupEntity:   groupEntity,
+		userEntity:    userEntity,
+		sessionEntity: sessionEntity,
 	}
 }
 
@@ -20,6 +22,7 @@ type CreateGroupRequest struct {
 
 type GroupInfo struct {
 	ID      int64  `json:"id"`
+	No      string `json:"no"`
 	Name    string `json:"name"`
 	Avatar  string `json:"avatar"`
 	OwnerId int64  `json:"owner_id"`
@@ -61,6 +64,11 @@ type ChangeMemberRoleRequest struct {
 	Role    int8  `json:"role"`
 }
 
+type SearchGroupRequest struct {
+	No   string `form:"no"`
+	Name string `form:"name"`
+}
+
 type GroupService interface {
 	CreateGroup(userId int64, req CreateGroupRequest) error
 	ListGroup(userId int64) ([]GroupInfo, error)
@@ -72,19 +80,62 @@ type GroupService interface {
 	UpdateMemberInfo(userId int64, req UpdateMemberInfoRequest) error
 	ListGroupMembers(userId int64, groupId int64) ([]GroupMemberInfo, error)
 	ChangeMemberRole(userId int64, req ChangeMemberRoleRequest) error
+	SearchGroup(req SearchGroupRequest) ([]GroupInfo, error)
 }
 
 type groupService struct {
-	groupEntity entity.GroupEntity
-	userEntity  entity.UserEntity
+	groupEntity   entity.GroupEntity
+	userEntity    entity.UserEntity
+	sessionEntity entity.SessionEntity
+}
+
+func (g groupService) SearchGroup(req SearchGroupRequest) ([]GroupInfo, error) {
+	where := make(map[string]interface{})
+	if req.No != "" {
+		where["no"] = req.No
+	}
+	if req.Name != "" {
+		where["name"] = "%" + req.Name + "%"
+	}
+	group, err := g.groupEntity.SearchGroup(where)
+	if err != nil {
+		return nil, err
+	}
+	infos := make([]GroupInfo, 0, len(group))
+	for _, item := range group {
+		infos = append(infos, GroupInfo{
+			ID:      item.ID,
+			No:      item.No,
+			Name:    item.Name,
+			Avatar:  item.Avatar,
+			OwnerId: item.OwnerId,
+		})
+	}
+	return infos, nil
 }
 
 func (g groupService) CreateGroup(userId int64, req CreateGroupRequest) error {
-	_, err := g.groupEntity.CreateGroup(entity.Group{
+	group := entity.Group{
 		Name:    req.Name,
 		Avatar:  req.Avatar,
 		OwnerId: userId,
+		No:      random.RandNum(8),
+	}
+	tx := g.groupEntity.Begin()
+	_, err := g.groupEntity.CreateGroupTx(tx, &group)
+	if err != nil {
+		return err
+	}
+	err = g.sessionEntity.CreateUserSessionTx(tx, entity.UserSession{
+		SessionType: entity.GroupSession,
+		UserId:      userId,
+		TargetId:    group.ID,
 	})
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	tx.Commit()
 	return err
 }
 
@@ -97,6 +148,7 @@ func (g groupService) ListGroup(userId int64) ([]GroupInfo, error) {
 	for _, g := range group {
 		result = append(result, GroupInfo{
 			ID:      g.ID,
+			No:      g.No,
 			Name:    g.Name,
 			Avatar:  g.Avatar,
 			OwnerId: g.OwnerId,
@@ -131,6 +183,7 @@ func (g groupService) DismissGroup(userId int64, groupId int64) error {
 }
 
 func (g groupService) AddGroupMember(userId int64, req AddGroupMemberRequest) error {
+	// 判断添加成员的操作者是否有权限添加
 	member, err := g.groupEntity.GetGroupMember(req.GroupId, userId)
 	if err != nil {
 		return err
@@ -138,6 +191,7 @@ func (g groupService) AddGroupMember(userId int64, req AddGroupMemberRequest) er
 	if member.Role == entity.RoleMember {
 		return errors.WithStackByCode(codec.NotPermitCode)
 	}
+	// 判断要添加的人是否已经是成员
 	ok, err := g.groupEntity.IsGroupMember(req.GroupId, req.UserId)
 	if err != nil {
 		return err
@@ -148,11 +202,26 @@ func (g groupService) AddGroupMember(userId int64, req AddGroupMemberRequest) er
 	if req.Role != entity.RoleManager && req.Role != entity.RoleMember {
 		return errors.WithStackByCode(codec.UnSupportRoleCode)
 	}
-	return g.groupEntity.AddGroupMember(entity.GroupMember{
+	tx := g.groupEntity.Begin()
+	err = g.groupEntity.AddGroupMemberTx(tx, entity.GroupMember{
 		GroupId: req.GroupId,
 		UserId:  req.UserId,
 		Role:    req.Role,
 	})
+	if err != nil {
+		return err
+	}
+	err = g.sessionEntity.CreateUserSessionTx(tx, entity.UserSession{
+		SessionType: entity.GroupSession,
+		UserId:      req.UserId,
+		TargetId:    req.GroupId,
+	})
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	tx.Commit()
+	return nil
 }
 
 func (g groupService) RemoveGroupMember(userId int64, req RemoveGroupMemberRequest) error {

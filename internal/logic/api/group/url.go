@@ -11,6 +11,7 @@ func RegisterGroupRouter(r gin.IRouter) {
 	{
 		v1.POST("", CreateGroup)
 		v1.GET("/list", ListGroup)
+		v1.GET("/search", SearchGroup)
 		v1.PUT("/info", UpdateGroup)
 		v1.DELETE("", DismissGroup)
 		v1.POST("/member", AddGroupMember)

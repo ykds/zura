@@ -54,10 +54,11 @@ type LoginResponse struct {
 }
 
 type UpdateUserInfoRequest struct {
-	Username string `json:"username"`
-	Phone    string `json:"phone"`
-	Email    string `json:"email"`
-	Avatar   string `json:"avatar"`
+	Username   string `json:"username"`
+	Avatar     string `json:"avatar"`
+	Phone      string `json:"phone"`
+	Email      string `json:"email"`
+	VerifyCode string `json:"verify_code"`
 }
 
 type ChangePasswordRequest struct {
@@ -182,7 +183,6 @@ func (u *userService) Register(req RegisterRequest) error {
 		}
 		if !ok {
 			return errors.New(codec.VerifyStatusWrongStatus)
-
 		}
 	}
 
@@ -247,6 +247,39 @@ func (u *userService) GetUserInfo(userId int64) (entity.UserInfo, error) {
 }
 
 func (u *userService) UpdateUserInfo(userId int64, req UpdateUserInfoRequest) error {
+	info, err := u.GetUserInfo(userId)
+	if err != nil {
+		return err
+	}
+	if req.Username != "" {
+		if !info.UpdatedUsernameAt.AddDate(1, 0, 0).After(time.Now()) {
+			return errors.Newf(codec.YearUpdateLimitStatus, "用户名")
+		}
+	}
+	if req.Phone != "" {
+		if !info.UpdatedPhoneAt.AddDate(1, 0, 0).After(time.Now()) {
+			return errors.Newf(codec.YearUpdateLimitStatus, "手机号")
+		}
+		ok, err := u.verifyCodeService.VerifyCode(fmt.Sprintf(common.UpdateUserPhoneCacheKey, userId), req.VerifyCode)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			return errors.New(codec.VerifyStatusWrongStatus)
+		}
+	}
+	if req.Email != "" {
+		if !info.UpdatedEmailAt.AddDate(1, 0, 0).After(time.Now()) {
+			return errors.Newf(codec.YearUpdateLimitStatus, "邮箱")
+		}
+		ok, err := u.verifyCodeService.VerifyCode(fmt.Sprintf(common.UpdateUserEmailCacheKey, userId), req.VerifyCode)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			return errors.New(codec.VerifyStatusWrongStatus)
+		}
+	}
 	return u.userEntity.UpdateUser(userId, entity.User{
 		UserInfo: entity.UserInfo{
 			Username: req.Username,

@@ -6,15 +6,6 @@ import (
 	"time"
 )
 
-var globalMemCache *Memory
-
-func GetGloMemCache() Cache {
-	if globalMemCache == nil {
-		panic("never initialized")
-	}
-	return globalMemCache
-}
-
 type Memory struct {
 	client *cache.Cache
 }
@@ -83,7 +74,7 @@ func (m Memory) Expire(ctx context.Context, key string, ex time.Duration) error 
 }
 
 func NewMemoryCache() Cache {
-	globalMemCache = new(Memory)
-	globalMemCache.client = cache.New(30*time.Second, time.Minute)
-	return globalMemCache
+	mcahce := new(Memory)
+	mcahce.client = cache.New(30*time.Second, time.Minute)
+	return mcahce
 }

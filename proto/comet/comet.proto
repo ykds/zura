@@ -8,10 +8,12 @@ enum Op {
   Empty = 0;
   NewMsg = 1;
   NewApplication = 2;
-  SynNewMsg = 3;
-  NewMsgReply = 4;
-  Heartbeat = 5;
-  HeartbeatReply = 6;
+  ApplicationHandleResult = 3;
+
+  SynNewMsg = 4;
+  NewMsgReply = 5;
+  Heartbeat = 6;
+  HeartbeatReply = 7;
 }
 
 message PushNotificationRequest {

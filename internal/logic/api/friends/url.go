@@ -10,6 +10,6 @@ func RegisterFriendsRouter(r gin.IRouter) {
 	v1 := group.Group("/v1")
 	{
 		v1.GET("/list", ListFriends)
-		v1.DELETE("", DeleteFriends)
+		v1.DELETE("/id/:id", DeleteFriends)
 	}
 }

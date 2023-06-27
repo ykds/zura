@@ -53,7 +53,6 @@ func New(c *Config, opts ...Option) *Database {
 	if err != nil {
 		panic(fmt.Errorf("get sql db error: %v", err))
 	}
-	// TODO 如何决策？
 	sqldb.SetConnMaxLifetime(5 * time.Minute)
 	sqldb.SetMaxIdleConns(5)
 	sqldb.SetMaxOpenConns(10)

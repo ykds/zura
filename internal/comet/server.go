@@ -273,6 +273,6 @@ func (s *Server) heartbeat(userId int64) (*Response, error) {
 		return nil, errors.New(codec.HeartBeatFailedCode)
 	}
 	return &Response{
-		Op: comet.Op_NewMsgReply,
+		Op: comet.Op_HeartbeatReply,
 	}, nil
 }

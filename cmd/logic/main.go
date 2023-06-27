@@ -38,7 +38,8 @@ func main() {
 
 	database := db.New(&config.GetConfig().Database, db.WithDebug(config.GetConfig().Server.Debug))
 	caches := cache.NewMemoryCache()
-	entity.NewEntity(database, caches)
+	redis := cache.NewRedis(&config.GetConfig().Cache)
+	entity.NewEntity(database, redis)
 
 	ctx2, cancel2 := context.WithTimeout(context.Background(), 2*time.Second)
 	cometConn, err := grpc.DialContext(ctx2, fmt.Sprintf("%s:%s", config.GetConfig().CometServer.Host, config.GetConfig().CometServer.Port), grpc.WithTransportCredentials(insecure.NewCredentials()))

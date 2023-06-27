@@ -10,7 +10,7 @@ func RegisterUserRouter(r gin.IRouter) {
 	v1noAuth := noAuth.Group("/v1")
 	{
 		v1noAuth.POST("/register", Register)
-		v1noAuth.POST("/token", Login)
+		v1noAuth.POST("/login", Login)
 	}
 	auth := r.Group("/users", middleware.Auth())
 	v1auth := auth.Group("/v1")

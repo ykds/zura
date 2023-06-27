@@ -8,6 +8,7 @@ import (
 	"github.com/ykds/zura/pkg/errors"
 	"github.com/ykds/zura/proto/comet"
 	"gorm.io/gorm"
+	"time"
 )
 
 func NewFriendApplicationService(cometClient comet.CometClient, friendApplicationEntity entity.FriendApplicationEntity, friendEntity entity.FriendEntity) FriendApplicationService {
@@ -98,7 +99,7 @@ func (f *friendApplicationService) ApplyFriend(userId int64, req ApplyRequest) e
 			return err
 		}
 	}
-	body, _ := json.Marshal(map[string]interface{}{"op": comet.Op_NewMsg})
+	body, _ := json.Marshal(map[string]interface{}{"op": comet.Op_NewApplication})
 	_, err = f.cometClient.PushNotification(context.Background(), &comet.PushNotificationRequest{
 		ToUserId: []int64{userId},
 		Body:     body,
@@ -111,8 +112,14 @@ func (f *friendApplicationService) ListApplications(userId int64) ([]Application
 	if err != nil {
 		return nil, err
 	}
+	expiredApp := make([]entity.FriendApplication, 0)
 	result := make([]Application, 0)
 	for _, app := range apps {
+		// 过期
+		if app.UpdatedAt.Local().Add(24 * time.Hour * 3).After(time.Now()) {
+			expiredApp = append(expiredApp, app)
+			continue
+		}
 		var applyType int8
 		if app.User1Id == userId {
 			applyType = ApplyTypeSend
@@ -134,6 +141,11 @@ func (f *friendApplicationService) ListApplications(userId int64) ([]Application
 		}
 		result = append(result, a)
 	}
+	go func() {
+		for _, app := range expiredApp {
+			_ = f.friendApplicationEntity.UpdateApplicationStatus(app.ID, entity.Expired)
+		}
+	}()
 	return result, nil
 }
 
@@ -169,7 +181,15 @@ func (f *friendApplicationService) UpdateApplicationStatus(userId int64, id int6
 		}
 		f.friendApplicationEntity.Commit(tx)
 	}
-	return f.friendApplicationEntity.UpdateApplicationStatus(id, status)
+	err = f.friendApplicationEntity.UpdateApplicationStatus(id, status)
+	if err != nil {
+		return err
+	}
+	body, _ := json.Marshal(map[string]interface{}{"op": comet.Op_ApplicationHandleResult, "id": id, "status": status})
+	_, err = f.cometClient.PushNotification(context.Background(), &comet.PushNotificationRequest{
+		ToUserId: []int64{fa.User2Id},
+		Body:     body,
+	})
 }
 
 func (f *friendApplicationService) DeleteApplication(id int64, userId int64) error {

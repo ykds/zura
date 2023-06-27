@@ -47,6 +47,29 @@ func ListGroup(c *gin.Context) {
 	}
 }
 
+func SearchGroup(c *gin.Context) {
+	var (
+		err  error
+		req  group.SearchGroupRequest
+		resp struct {
+			Data []group.GroupInfo `json:"data"`
+		}
+	)
+	defer func() {
+		if len(resp.Data) == 0 {
+			resp.Data = make([]group.GroupInfo, 0)
+		}
+		response.HttpResponse(c, err, resp)
+	}()
+	resp.Data, err = services.GetServices().GroupService.SearchGroup(req)
+	if err != nil {
+		return
+	}
+	for i, item := range resp.Data {
+		resp.Data[i].Avatar = common.ParseAvatarUrl(c, item.Avatar)
+	}
+}
+
 func UpdateGroup(c *gin.Context) {
 	var (
 		err error

@@ -3,11 +3,8 @@ package message
 import (
 	"context"
 	"encoding/json"
-	"fmt"
-	"github.com/ykds/zura/internal/common"
 	"github.com/ykds/zura/internal/logic/codec"
 	"github.com/ykds/zura/internal/logic/entity"
-	"github.com/ykds/zura/pkg/cache"
 	"github.com/ykds/zura/pkg/errors"
 	"github.com/ykds/zura/proto/comet"
 	"time"
@@ -144,8 +141,6 @@ func (m messageService) PushMessage(userId int64, req PushMessageRequest) error 
 		if err != nil {
 			return err
 		}
-		msgByte, _ := json.Marshal(msg)
-		_ = cache.GetGloMemCache().LPush(context.Background(), fmt.Sprintf(common.UnackMessageCacheKey, msg.FromUserId, msg.ToUserId), string(msgByte), time.Minute)
 		notiUser = []int64{session.TargetId}
 	case entity.GroupSession:
 		ok, err := m.groupEntity.IsGroupMember(session.TargetId, userId)
@@ -165,8 +160,6 @@ func (m messageService) PushMessage(userId int64, req PushMessageRequest) error 
 		if err != nil {
 			return err
 		}
-		msgByte, _ := json.Marshal(msg)
-		_ = cache.GetGloMemCache().LPush(context.Background(), fmt.Sprintf(common.UnackGroupMessageCacheKey, msg.GroupId), string(msgByte), time.Minute)
 		members, err := m.groupEntity.ListGroupMembers(session.TargetId)
 		if err != nil {
 			return err
@@ -204,24 +197,10 @@ func (m messageService) ListNewMessage(userId int64, req ListMessageRequest) ([]
 		if !ok {
 			return nil, errors.WithStackByCode(codec.NotFriendCode)
 		}
-		var message []entity.Message
-		messList, err := cache.GetGloMemCache().LRange(context.Background(), fmt.Sprintf(common.UnackMessageCacheKey, session.TargetId, userId), 0, -1)
-		if err == nil {
-			for _, mess := range messList {
-				item := entity.Message{}
-				_ = json.Unmarshal([]byte(mess), &item)
-				if item.Timestamp > req.Timestamp {
-					message = append(message, item)
-				}
-			}
-			_ = cache.GetGloMemCache().LRem(context.Background(), fmt.Sprintf(common.UnackMessageCacheKey, session.TargetId, userId), 0, int64(len(message)))
-		} else {
-			message, err = m.messageEntity.LiseNewMessage(session.TargetId, userId, req.Timestamp)
-			if err != nil {
-				return nil, err
-			}
+		message, err := m.messageEntity.LiseNewMessage(session.TargetId, userId, req.Timestamp)
+		if err != nil {
+			return nil, err
 		}
-
 		for _, item := range message {
 			result = append(result, MessageItem{
 				ID:         item.ID,
@@ -241,25 +220,10 @@ func (m messageService) ListNewMessage(userId int64, req ListMessageRequest) ([]
 		if !ok {
 			return nil, errors.WithStackByCode(codec.NotGroupMember)
 		}
-
-		var message []entity.GroupMessage
-		messList, err := cache.GetGloMemCache().LRange(context.Background(), fmt.Sprintf(common.UnackMessageCacheKey, session.TargetId, userId), 0, -1)
-		if err == nil {
-			for _, mess := range messList {
-				item := entity.GroupMessage{}
-				_ = json.Unmarshal([]byte(mess), &item)
-				if item.Timestamp > req.Timestamp {
-					message = append(message, item)
-				}
-			}
-			_ = cache.GetGloMemCache().LRem(context.Background(), fmt.Sprintf(common.UnackGroupMessageCacheKey, session.TargetId), 0, int64(len(message)))
-		} else {
-			message, err = m.messageEntity.ListNewGroupMessage(session.TargetId, req.Timestamp)
-			if err != nil {
-				return nil, err
-			}
+		message, err := m.messageEntity.ListNewGroupMessage(userId, session.TargetId, req.Timestamp)
+		if err != nil {
+			return nil, err
 		}
-
 		for _, item := range message {
 			result = append(result, MessageItem{
 				ID:         item.ID,

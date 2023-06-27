@@ -7,6 +7,7 @@ import (
 	"github.com/ykds/zura/internal/logic/services/friends"
 	"github.com/ykds/zura/pkg/errors"
 	"github.com/ykds/zura/pkg/response"
+	"strconv"
 )
 
 func ListFriends(c *gin.Context) {
@@ -34,21 +35,20 @@ func ListFriends(c *gin.Context) {
 func DeleteFriends(c *gin.Context) {
 	var (
 		err error
-		req struct {
-			FriendId int64 `json:"friend_id"`
-		}
 	)
 	defer func() {
 		response.HttpResponse(c, err, nil)
 	}()
-	if err = c.Bind(&req); err != nil {
+	s := c.Param("id")
+	if s == "" {
 		err = errors.WithMessage(errors.New(errors.ParameterErrorStatus), err.Error())
 		return
 	}
-	if req.FriendId == 0 {
-		err = errors.WithMessage(errors.New(errors.ParameterErrorStatus), err.Error())
+	var id int64
+	id, err = strconv.ParseInt(s, 10, 64)
+	if err != nil {
 		return
 	}
 	userId := c.GetInt64(common.UserIdKey)
-	err = services.GetServices().FriendsService.DeleteFriend(userId, req.FriendId)
+	err = services.GetServices().FriendsService.DeleteFriend(userId, id)
 }

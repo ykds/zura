@@ -3,6 +3,8 @@ package entity
 import (
 	"github.com/ykds/zura/pkg/db"
 	"github.com/ykds/zura/pkg/errors"
+	"gorm.io/gorm"
+	"time"
 )
 
 type User struct {
@@ -13,14 +15,30 @@ type User struct {
 
 type UserInfo struct {
 	BaseModel
-	Username string `json:"username" gorm:"username"`
-	Phone    string `json:"phone" gorm:"phone"`
-	Email    string `json:"email" gorm:"email"`
-	Avatar   string `json:"avatar" gorm:"avatar"`
+	Avatar            string    `json:"avatar" gorm:"avatar"`
+	Username          string    `json:"username" gorm:"username"`
+	Phone             string    `json:"phone" gorm:"phone"`
+	Email             string    `json:"email" gorm:"email"`
+	UpdatedPhoneAt    time.Time `json:"updated_phone_at"`
+	UpdatedEmailAt    time.Time `json:"updated_email_at"`
+	UpdatedUsernameAt time.Time `json:"updated_username_at"`
 }
 
 func (u User) TableName() string {
 	return "zura_users"
+}
+
+func (u User) BeforeUpdate(_ *gorm.DB) (err error) {
+	if u.Phone != "" {
+		u.UpdatedPhoneAt = time.Now()
+	}
+	if u.Email != "" {
+		u.UpdatedEmailAt = time.Now()
+	}
+	if u.Username != "" {
+		u.UpdatedUsernameAt = time.Now()
+	}
+	return
 }
 
 func NewUserEntity(db *db.Database) UserEntity {

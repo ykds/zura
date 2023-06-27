@@ -37,13 +37,14 @@ type Service struct {
 func NewServices(cache cache.Cache, entities *entity.Entity, cometClient comet.CometClient) {
 	verifyCodeService := verify_code.NewVerifyCodeService(cache)
 	friendService := friends.NewFriendsService(entities.FriendEntity, entities.UserEntity)
+	sessionService := session.NewSessionService(entities.SessionEntity, entities.GroupEntity, entities.UserEntity)
 	services = &Service{
 		UserService:              user.NewUserService(cache, entities.UserEntity, verifyCodeService),
 		FriendsService:           friendService,
 		FriendApplicationService: friend_application.NewFriendApplicationService(cometClient, entities.FriendApplicationEntity, entities.FriendEntity),
-		SessionService:           session.NewSessionService(entities.SessionEntity, entities.GroupEntity, entities.UserEntity),
+		SessionService:           sessionService,
 		VerifyCodeService:        verify_code.NewVerifyCodeService(cache),
 		MessageService:           message.NewMessageService(cometClient, entities.MessageEntity, entities.SessionEntity, entities.GroupEntity, entities.FriendEntity),
-		GroupService:             group.NewGroupServer(entities.GroupEntity, entities.UserEntity),
+		GroupService:             group.NewGroupServer(entities.GroupEntity, entities.UserEntity, entities.SessionEntity),
 	}
 }

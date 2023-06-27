@@ -14,6 +14,14 @@ func New(status int) Error {
 	}
 }
 
+func Newf(status int, msg ...string) Error {
+	c := GetCode(status)
+	return Error{
+		Code: c,
+		Err:  errors.New(fmt.Sprintf(c.Message, msg)),
+	}
+}
+
 type Error struct {
 	Err  error
 	Code Code
