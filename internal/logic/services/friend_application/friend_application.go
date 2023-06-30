@@ -179,17 +179,29 @@ func (f *friendApplicationService) UpdateApplicationStatus(userId int64, id int6
 			f.friendApplicationEntity.Rollback(tx)
 			return err
 		}
+		body, _ := json.Marshal(map[string]interface{}{"op": comet.Op_ApplicationHandleResult, "id": id, "status": status})
+		_, err = f.cometClient.PushNotification(context.Background(), &comet.PushNotificationRequest{
+			ToUserId: []int64{fa.User2Id},
+			Body:     body,
+		})
+		if err != nil {
+			f.friendApplicationEntity.Rollback(tx)
+			return err
+		}
 		f.friendApplicationEntity.Commit(tx)
-	}
-	err = f.friendApplicationEntity.UpdateApplicationStatus(id, status)
-	if err != nil {
+		return nil
+	} else {
+		err = f.friendApplicationEntity.UpdateApplicationStatus(id, status)
+		if err != nil {
+			return err
+		}
+		body, _ := json.Marshal(map[string]interface{}{"op": comet.Op_ApplicationHandleResult, "id": id, "status": status})
+		_, err = f.cometClient.PushNotification(context.Background(), &comet.PushNotificationRequest{
+			ToUserId: []int64{fa.User2Id},
+			Body:     body,
+		})
 		return err
 	}
-	body, _ := json.Marshal(map[string]interface{}{"op": comet.Op_ApplicationHandleResult, "id": id, "status": status})
-	_, err = f.cometClient.PushNotification(context.Background(), &comet.PushNotificationRequest{
-		ToUserId: []int64{fa.User2Id},
-		Body:     body,
-	})
 }
 
 func (f *friendApplicationService) DeleteApplication(id int64, userId int64) error {

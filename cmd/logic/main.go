@@ -14,7 +14,9 @@ import (
 	"github.com/ykds/zura/pkg/log"
 	"github.com/ykds/zura/pkg/log/zap"
 	"github.com/ykds/zura/pkg/snowflake"
+	"github.com/ykds/zura/pkg/trace"
 	"github.com/ykds/zura/proto/comet"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"os"
@@ -30,6 +32,7 @@ func main() {
 	cfg.InitConfig(*configPath, config.GetConfig())
 
 	snowflake.InitSnowflake(1)
+	trace.InitTrace(config.GetConfig().Trace)
 
 	l := zap.NewLogger(&config.GetConfig().Log,
 		zap.WithDebug(config.GetConfig().Server.Debug),
@@ -42,7 +45,11 @@ func main() {
 	entity.NewEntity(database, redis)
 
 	ctx2, cancel2 := context.WithTimeout(context.Background(), 2*time.Second)
-	cometConn, err := grpc.DialContext(ctx2, fmt.Sprintf("%s:%s", config.GetConfig().CometServer.Host, config.GetConfig().CometServer.Port), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	cometConn, err := grpc.DialContext(ctx2,
+		fmt.Sprintf("%s:%s", config.GetConfig().CometServer.Host, config.GetConfig().CometServer.Port),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithUnaryInterceptor(otelgrpc.UnaryClientInterceptor()),
+	)
 	if err != nil {
 		log.Panicf("new comet grpc client failed, err: %+v", err)
 	}

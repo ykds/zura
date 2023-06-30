@@ -1,6 +1,9 @@
 package comet
 
-import "github.com/ykds/zura/pkg/log"
+import (
+	"github.com/ykds/zura/pkg/log"
+	"github.com/ykds/zura/pkg/trace"
+)
 
 var cfg = DefaultConfig()
 
@@ -15,6 +18,7 @@ type Config struct {
 	Logic      Logic            `json:"logic" yaml:"logic"`
 	Log        log.Config       `json:"log" yaml:"log"`
 	Session    Session          `json:"session" yaml:"session"`
+	Trace      trace.Config     `json:"trace" yaml:"trace"`
 }
 
 type HttpServerConfig struct {
@@ -41,6 +45,9 @@ func DefaultConfig() *Config {
 		Log: log.DefaultConfig(),
 		Session: Session{
 			HeartbeatInterval: 30,
+		},
+		Trace: trace.Config{
+			ServiceName: "comet",
 		},
 	}
 }

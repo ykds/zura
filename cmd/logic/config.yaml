@@ -29,3 +29,6 @@ comet_server:
 
 session:
   heartbeat_interval: -1
+
+trace:
+  sample_rate: 1

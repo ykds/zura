@@ -1,8 +1,10 @@
 package response
 
 import (
+	"fmt"
 	"github.com/ykds/zura/pkg/errors"
 	"github.com/ykds/zura/pkg/log"
+	"go.opentelemetry.io/otel/trace"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -16,7 +18,10 @@ type Resp struct {
 
 func HttpResponse(ctx *gin.Context, err error, data interface{}) {
 	if err != nil {
-		log.Errorf("%+v", err)
+		sctx := trace.SpanContextFromContext(ctx)
+		tracId := sctx.TraceID()
+		spanId := sctx.SpanID()
+		log.Errorw(fmt.Sprintf("%+v", err), "trace_id", tracId, "span_id", spanId)
 		var e errors.Error
 		if errors.As(err, &e) {
 			ctx.JSON(http.StatusOK, Resp{Code: e.Code.Status, Message: e.Code.Message})

@@ -4,19 +4,23 @@ import (
 	"context"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/logging"
 	"github.com/ykds/zura/pkg/log"
+	"go.opentelemetry.io/otel/trace"
 )
 
 func InterceptorLogger(l log.Logger) logging.Logger {
 	return logging.LoggerFunc(func(ctx context.Context, level logging.Level, msg string, fields ...any) {
+		sctx := trace.SpanContextFromContext(ctx)
+		tracId := sctx.TraceID()
+		spanId := sctx.SpanID()
 		switch level {
 		case logging.LevelDebug:
-			l.Debug(msg, fields)
+			l.Debugw(msg, []any{"field", fields, "trace_id", tracId, "span_id", spanId}...)
 		case logging.LevelInfo:
-			l.Info(msg, fields)
+			l.Infow(msg, []any{"field", fields, "trace_id", tracId, "span_id", spanId}...)
 		case logging.LevelWarn:
-			l.Warn(msg, fields)
+			l.Warnw(msg, []any{"field", fields, "trace_id", tracId, "span_id", spanId}...)
 		case logging.LevelError:
-			l.Error(msg, fields)
+			l.Errorw(msg, []any{"field", fields, "trace_id", tracId, "span_id", spanId}...)
 		}
 	})
 }

@@ -7,6 +7,7 @@ import (
 	"github.com/ykds/zura/internal/middleware"
 	"github.com/ykds/zura/pkg/log"
 	"github.com/ykds/zura/proto/comet"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"
 	"net"
@@ -16,6 +17,7 @@ import (
 func NewGrpcServer(srv *Server) *grpc.Server {
 	server := grpc.NewServer(
 		grpc.ChainUnaryInterceptor(
+			otelgrpc.UnaryServerInterceptor(),
 			recovery.UnaryServerInterceptor(),
 			logging.UnaryServerInterceptor(middleware.InterceptorLogger(log.GetGlobalLogger()))),
 		grpc.KeepaliveParams(keepalive.ServerParameters{

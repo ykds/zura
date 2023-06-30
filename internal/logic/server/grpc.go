@@ -15,12 +15,14 @@ import (
 
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/logging"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/recovery"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
 )
 
 func NewGrpcServer(c config.GrpcServerConfig, service services.Service) *grpc.Server {
 	srv := grpc.NewServer(
 		grpc.ChainUnaryInterceptor(
+			otelgrpc.UnaryServerInterceptor(),
 			recovery.UnaryServerInterceptor(),
 			logging.UnaryServerInterceptor(middleware.InterceptorLogger(log.GetGlobalLogger()))),
 		grpc.KeepaliveParams(keepalive.ServerParameters{

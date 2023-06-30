@@ -8,9 +8,11 @@ import (
 	"github.com/ykds/zura/internal/comet/codec"
 	"github.com/ykds/zura/pkg/errors"
 	"github.com/ykds/zura/pkg/log"
+	"github.com/ykds/zura/pkg/pprof"
 	"github.com/ykds/zura/pkg/response"
 	"github.com/ykds/zura/proto/comet"
 	"github.com/ykds/zura/proto/logic"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"net/http"
@@ -43,10 +45,12 @@ func NewServer(c *Config) *Server {
 		},
 		onlineUsers: make(map[int64]*Conn),
 	}
+	pprof.RouteRegister(engine)
 	engine.GET("/ws", s.handleWebsocket)
 
 	conn, err := grpc.DialContext(context.Background(), c.Logic.Host+":"+c.Logic.Port,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithUnaryInterceptor(otelgrpc.UnaryClientInterceptor()),
 	)
 	if err != nil {
 		panic(err)

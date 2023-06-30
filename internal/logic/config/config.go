@@ -4,6 +4,7 @@ import (
 	"github.com/ykds/zura/pkg/cache"
 	"github.com/ykds/zura/pkg/db"
 	"github.com/ykds/zura/pkg/log"
+	"github.com/ykds/zura/pkg/trace"
 )
 
 var cfg = DefaultConfig()
@@ -23,7 +24,8 @@ type Config struct {
 		Host string `json:"host" yaml:"host"`
 		Port string `json:"port" yaml:"port"`
 	} `json:"comet_server" yaml:"comet_server"`
-	Session Session `json:"session" yaml:"session"`
+	Session Session      `json:"session" yaml:"session"`
+	Trace   trace.Config `json:"trace" yaml:"trace"`
 }
 
 type HttpServerConfig struct {
@@ -51,6 +53,9 @@ func DefaultConfig() *Config {
 		},
 		Session: Session{
 			HeartbeatInterval: 60,
+		},
+		Trace: trace.Config{
+			ServiceName: "logic",
 		},
 	}
 }

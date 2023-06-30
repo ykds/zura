@@ -12,6 +12,7 @@ import (
 	"github.com/ykds/zura/internal/logic/api/user"
 	"github.com/ykds/zura/internal/logic/config"
 	"github.com/ykds/zura/pkg/log"
+	"github.com/ykds/zura/pkg/pprof"
 	"net/http"
 	"time"
 
@@ -57,6 +58,7 @@ func NewHttpServer(cfg config.HttpServerConfig, opts ...Option) *HttpServer {
 		engine.Use(gin.LoggerWithWriter(log.GetGlobalLogger()), gin.RecoveryWithWriter(log.GetGlobalLogger()))
 	}
 	engine.Static(common.StaticPath, common.StaticDir)
+	pprof.RouteRegister(engine)
 	loadRouters(engine)
 	server.httpServer = &http.Server{
 		Addr:    ":" + server.c.Port,

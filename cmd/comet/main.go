@@ -7,6 +7,7 @@ import (
 	"github.com/ykds/zura/pkg/log"
 	"github.com/ykds/zura/pkg/log/zap"
 	"github.com/ykds/zura/pkg/snowflake"
+	"github.com/ykds/zura/pkg/trace"
 	"os"
 	"os/signal"
 	"syscall"
@@ -19,6 +20,7 @@ func main() {
 	cfg.InitConfig(*configPath, comet.GetConfig())
 
 	snowflake.InitSnowflake(2)
+	trace.InitTrace(comet.GetConfig().Trace)
 
 	l := zap.NewLogger(&comet.GetConfig().Log,
 		zap.WithDebug(comet.GetConfig().Debug),

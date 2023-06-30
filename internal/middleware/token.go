@@ -11,12 +11,6 @@ import (
 	"github.com/ykds/zura/pkg/token"
 )
 
-var mcache cache.Cache
-
-func init() {
-	mcache = cache.NewMemoryCache()
-}
-
 func Auth() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		t := ctx.GetHeader("token")
@@ -34,7 +28,7 @@ func Auth() gin.HandlerFunc {
 		}
 
 		// 判断是否在线
-		_, err = mcache.Get(ctx, fmt.Sprintf(common.UserOnlineCacheKey, userId))
+		_, err = cache.GetGlobalMemCache().Get(ctx, fmt.Sprintf(common.UserOnlineCacheKey, userId))
 		if err != nil {
 			if errors.Is(err, cache.NotFoundErr) {
 				response.HttpResponse(ctx, errors.WithMessage(errors.New(codec.UnConnectToCometStatus), err.Error()), nil)
