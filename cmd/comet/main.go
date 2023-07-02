@@ -3,8 +3,11 @@ package main
 import (
 	"flag"
 	"github.com/ykds/zura/internal/comet"
+	"github.com/ykds/zura/internal/common"
 	cfg "github.com/ykds/zura/pkg/config"
+	"github.com/ykds/zura/pkg/kafka"
 	"github.com/ykds/zura/pkg/log"
+	"github.com/ykds/zura/pkg/log/plugin"
 	"github.com/ykds/zura/pkg/log/zap"
 	"github.com/ykds/zura/pkg/snowflake"
 	"github.com/ykds/zura/pkg/trace"
@@ -22,9 +25,14 @@ func main() {
 	snowflake.InitSnowflake(2)
 	trace.InitTrace(comet.GetConfig().Trace)
 
-	l := zap.NewLogger(&comet.GetConfig().Log,
+	kafkaManager := kafka.NewKafka(comet.GetConfig().Kafka)
+	producer := kafkaManager.NewProducer(common.LoggingTopic)
+
+	l := zap.NewLogger(
+		comet.GetConfig().Log,
+		zap.WithService("comet"),
 		zap.WithDebug(comet.GetConfig().Debug),
-		zap.WithLumberjack())
+		zap.WithOutput(plugin.NewLumberjackLogger(comet.GetConfig().Log.Lumberjack), plugin.NewKafkaWriter(producer)))
 	log.SetGlobalLogger(l)
 
 	server := comet.NewServer(comet.GetConfig())

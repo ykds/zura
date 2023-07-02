@@ -17,11 +17,16 @@ database:
 
 log:
   level: info
-  filename: "./logs/logic.log"
-  max_age: 7
-  max_size: 10
-  max_backups: 5
-  compress: false
+  lumberjack:
+    filename: "./logs/logic.log"
+    max_age: 7
+    max_size: 10
+    max_backups: 5
+    compress: false
+  logstash:
+    host: ""
+    port: "4560"
+
 
 comet_server:
   host: "127.0.0.1"

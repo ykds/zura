@@ -43,7 +43,7 @@ func NewServices(cache cache.Cache, entities *entity.Entity, cometClient comet.C
 		FriendsService:           friendService,
 		FriendApplicationService: friend_application.NewFriendApplicationService(cometClient, entities.FriendApplicationEntity, entities.FriendEntity),
 		SessionService:           sessionService,
-		VerifyCodeService:        verify_code.NewVerifyCodeService(cache),
+		VerifyCodeService:        verifyCodeService,
 		MessageService:           message.NewMessageService(cometClient, entities.MessageEntity, entities.SessionEntity, entities.GroupEntity, entities.FriendEntity),
 		GroupService:             group.NewGroupServer(entities.GroupEntity, entities.UserEntity, entities.SessionEntity),
 	}

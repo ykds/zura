@@ -9,7 +9,7 @@ import (
 
 type Redis struct {
 	client *redis.Client
-	c      *Config
+	c      Config
 	ctx    context.Context
 }
 
@@ -29,13 +29,13 @@ func (r Redis) Set(ctx context.Context, key string, value interface{}, ex time.D
 	return r.client.Set(ctx, key, value, ex).Err()
 }
 
-func (r Redis) Get(ctx context.Context, key string) (interface{}, error) {
+func (r Redis) Get(ctx context.Context, key string) (string, error) {
 	result, err := r.client.Get(ctx, key).Result()
 	if err != nil {
 		if err.Error() == "redis: nil" {
 			err = NotFoundErr
 		}
-		return nil, err
+		return "", err
 	}
 	return result, nil
 }
@@ -50,7 +50,7 @@ func (r Redis) Expire(ctx context.Context, key string, ex time.Duration) error {
 
 var _ Cache = (*Redis)(nil)
 
-func NewRedis(c *Config) Cache {
+func NewRedis(c Config) Cache {
 	r := &Redis{
 		c: c,
 	}

@@ -44,5 +44,5 @@ func (v *verifyCodeService) VerifyCode(key string, code string) (bool, error) {
 		}
 		return false, err
 	}
-	return code == verifyCode.(string), nil
+	return code == verifyCode, nil
 }

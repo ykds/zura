@@ -1,6 +1,7 @@
 package entity
 
 import (
+	"github.com/ykds/zura/pkg/cache"
 	"github.com/ykds/zura/pkg/db"
 	"github.com/ykds/zura/pkg/errors"
 	"gorm.io/gorm"
@@ -24,9 +25,10 @@ func (r UserSession) TableName() string {
 	return "zura_user_session"
 }
 
-func NewSessionEntity(db *db.Database) SessionEntity {
+func NewSessionEntity(cache cache.Cache, db *db.Database) SessionEntity {
 	return &sessionEntity{
-		baseEntity{db: db},
+		cache:      cache,
+		baseEntity: baseEntity{db: db},
 	}
 }
 
@@ -41,6 +43,7 @@ type SessionEntity interface {
 }
 
 type sessionEntity struct {
+	cache cache.Cache
 	baseEntity
 }
 

@@ -7,18 +7,21 @@ import (
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
-	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 type logger struct {
 	*zap.SugaredLogger
-	c     *log.Config
-	debug bool
-	out   io.Writer
+	c       log.Config
+	debug   bool
+	outs    []io.Writer
+	service string
 }
 
 func (l *logger) Write(p []byte) (n int, err error) {
-	return l.out.Write(p)
+	for _, out := range l.outs {
+		_, _ = out.Write(p)
+	}
+	return 0, nil
 }
 
 type Option func(*logger)
@@ -29,22 +32,22 @@ func WithDebug(debug bool) Option {
 	}
 }
 
-func WithLumberjack() Option {
+func WithOutput(writer ...io.Writer) Option {
 	return func(l *logger) {
-		l.out = &lumberjack.Logger{
-			Filename:   l.c.Filename,
-			MaxSize:    l.c.MaxSize,
-			MaxAge:     l.c.MaxAge,
-			Compress:   l.c.Compress,
-			MaxBackups: l.c.MaxBackups,
-			LocalTime:  true,
-		}
+		l.outs = append(l.outs, writer...)
 	}
 }
 
-func NewLogger(cfg *log.Config, opts ...Option) log.Logger {
+func WithService(service string) Option {
+	return func(l *logger) {
+		l.service = service
+	}
+}
+
+func NewLogger(cfg log.Config, opts ...Option) log.Logger {
 	lg := &logger{
-		c: cfg,
+		c:    cfg,
+		outs: make([]io.Writer, 0),
 	}
 	for _, opt := range opts {
 		opt(lg)
@@ -62,16 +65,23 @@ func NewLogger(cfg *log.Config, opts ...Option) log.Logger {
 
 	if lg.debug {
 		level = zap.DebugLevel
-		lg.out = os.Stdout
+		lg.outs = append(lg.outs, os.Stdout)
 	}
 
 	encoderConfig := zap.NewProductionEncoderConfig()
 	encoderConfig.EncodeLevel = zapcore.CapitalLevelEncoder
 	encoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
 	enc := zapcore.NewJSONEncoder(encoderConfig)
-	core := zapcore.NewCore(enc, zapcore.AddSync(lg.out), level)
+
+	wsList := make([]zapcore.WriteSyncer, 0, len(lg.outs))
+	for _, out := range lg.outs {
+		wsList = append(wsList, zapcore.AddSync(out))
+	}
+
+	core := zapcore.NewCore(enc, zapcore.NewMultiWriteSyncer(wsList...), level)
 	l := zap.New(core, zap.AddCaller(), zap.AddCallerSkip(1))
 	zap.ReplaceGlobals(l)
 	lg.SugaredLogger = l.Sugar()
+	lg.SugaredLogger.With("service", lg.service)
 	return lg
 }

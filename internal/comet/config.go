@@ -1,6 +1,7 @@
 package comet
 
 import (
+	"github.com/ykds/zura/pkg/kafka"
 	"github.com/ykds/zura/pkg/log"
 	"github.com/ykds/zura/pkg/trace"
 )
@@ -19,6 +20,7 @@ type Config struct {
 	Log        log.Config       `json:"log" yaml:"log"`
 	Session    Session          `json:"session" yaml:"session"`
 	Trace      trace.Config     `json:"trace" yaml:"trace"`
+	Kafka      kafka.Config     `json:"kafka" yaml:"kafka"`
 }
 
 type HttpServerConfig struct {
@@ -49,6 +51,7 @@ func DefaultConfig() *Config {
 		Trace: trace.Config{
 			ServiceName: "comet",
 		},
+		Kafka: kafka.DefaultConfig(),
 	}
 }
 

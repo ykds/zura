@@ -59,7 +59,7 @@ func NewEntity(database *db.Database, cache cache.Cache) {
 		UserEntity:              NewUserEntity(database),
 		FriendEntity:            NewFriendEntity(database),
 		FriendApplicationEntity: NewFriendApplication(database),
-		SessionEntity:           NewSessionEntity(database),
+		SessionEntity:           NewSessionEntity(cache, database),
 		MessageEntity:           NewMessageEntity(database, cache),
 		GroupEntity:             NewGroupEntity(database),
 	}

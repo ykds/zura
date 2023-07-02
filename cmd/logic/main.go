@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"github.com/ykds/zura/internal/common"
 	"github.com/ykds/zura/internal/logic/config"
 	"github.com/ykds/zura/internal/logic/entity"
 	"github.com/ykds/zura/internal/logic/server"
@@ -11,7 +12,9 @@ import (
 	"github.com/ykds/zura/pkg/cache"
 	cfg "github.com/ykds/zura/pkg/config"
 	"github.com/ykds/zura/pkg/db"
+	"github.com/ykds/zura/pkg/kafka"
 	"github.com/ykds/zura/pkg/log"
+	"github.com/ykds/zura/pkg/log/plugin"
 	"github.com/ykds/zura/pkg/log/zap"
 	"github.com/ykds/zura/pkg/snowflake"
 	"github.com/ykds/zura/pkg/trace"
@@ -34,14 +37,19 @@ func main() {
 	snowflake.InitSnowflake(1)
 	trace.InitTrace(config.GetConfig().Trace)
 
-	l := zap.NewLogger(&config.GetConfig().Log,
+	kafkaManager := kafka.NewKafka(config.GetConfig().Kafka)
+	producer := kafkaManager.NewProducer(common.LoggingTopic)
+
+	l := zap.NewLogger(
+		config.GetConfig().Log,
+		zap.WithService("logic"),
 		zap.WithDebug(config.GetConfig().Server.Debug),
-		zap.WithLumberjack())
+		zap.WithOutput(plugin.NewLumberjackLogger(config.GetConfig().Log.Lumberjack), plugin.NewKafkaWriter(producer)))
 	log.SetGlobalLogger(l)
 
 	database := db.New(&config.GetConfig().Database, db.WithDebug(config.GetConfig().Server.Debug))
-	caches := cache.NewMemoryCache()
-	redis := cache.NewRedis(&config.GetConfig().Cache)
+	redis := cache.NewRedis(config.GetConfig().Cache)
+	cache.SetGlobalCache(redis)
 	entity.NewEntity(database, redis)
 
 	ctx2, cancel2 := context.WithTimeout(context.Background(), 2*time.Second)
@@ -56,7 +64,7 @@ func main() {
 	cancel2()
 	cometClient := comet.NewCometClient(cometConn)
 
-	services.NewServices(caches, entity.GetEntity(), cometClient)
+	services.NewServices(redis, entity.GetEntity(), cometClient)
 
 	httpServer := server.NewHttpServer(config.GetConfig().HttpServer,
 		server.WithLogger(l),

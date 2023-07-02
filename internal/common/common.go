@@ -21,6 +21,8 @@ var (
 
 	UpdateUserPhoneCacheKey = "UPDATE_USER_PHONE_%d"
 	UpdateUserEmailCacheKey = "UPDATE_USER_EMAIL_%d"
+
+	UserSessionCacheKey = "USER_SESSION_%d"
 )
 
 func ParseAvatarUrl(c *gin.Context, avatar string) string {

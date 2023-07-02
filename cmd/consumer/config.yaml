@@ -1,15 +1,5 @@
 debug: true
 
-http_server:
-  port: "9000"
-
-grpc_server:
-  port: "9001"
-
-logic:
-  host: "127.0.0.1"
-  port: "8001"
-
 log:
   level: info
   lumberjack:
@@ -21,10 +11,3 @@ log:
   logstash:
     host: ""
     port: "4560"
-
-
-session:
-  heartbeat_interval: 30
-
-trace:
-  sample_rate: 1

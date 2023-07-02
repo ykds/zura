@@ -28,7 +28,7 @@ func Auth() gin.HandlerFunc {
 		}
 
 		// 判断是否在线
-		_, err = cache.GetGlobalMemCache().Get(ctx, fmt.Sprintf(common.UserOnlineCacheKey, userId))
+		_, err = cache.GetGlobalCache().Get(ctx, fmt.Sprintf(common.UserOnlineCacheKey, userId))
 		if err != nil {
 			if errors.Is(err, cache.NotFoundErr) {
 				response.HttpResponse(ctx, errors.WithMessage(errors.New(codec.UnConnectToCometStatus), err.Error()), nil)
