@@ -55,7 +55,7 @@ func NewHttpServer(cfg config.HttpServerConfig, opts ...Option) *HttpServer {
 	} else {
 		gin.SetMode(gin.ReleaseMode)
 		engine = gin.New()
-		engine.Use(gin.LoggerWithWriter(log.GetGlobalLogger()), gin.RecoveryWithWriter(log.GetGlobalLogger()))
+		engine.Use(gin.RecoveryWithWriter(log.GetGlobalLogger()))
 	}
 	engine.Static(common.StaticPath, common.StaticDir)
 	pprof.RouteRegister(engine)
@@ -77,10 +77,10 @@ func (h *HttpServer) Run() {
 	}()
 }
 
-func (h *HttpServer) Shutdown() {
+func (h *HttpServer) Shutdown() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
-	h.httpServer.Shutdown(ctx)
+	return h.httpServer.Shutdown(ctx)
 }
 
 func loadRouters(r gin.IRouter) {

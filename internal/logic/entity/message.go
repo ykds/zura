@@ -2,7 +2,6 @@ package entity
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"github.com/ykds/zura/internal/common"
 	"github.com/ykds/zura/pkg/cache"
@@ -67,33 +66,17 @@ func (m2 messageEntity) CreateMessage(m *Message) error {
 			if err != nil {
 				return errors.WithStack(err)
 			}
-			m2.cache.Set(context.Background(), fmt.Sprintf(common.MessageCacheKey, m.Timestamp), "", 2*time.Minute)
+			_ = m2.cache.Set(context.Background(), fmt.Sprintf(common.MessageCacheKey, m.Timestamp), "", 2*time.Minute)
 			return nil
 		}
 		return err
 	}
-	msgByte, _ := json.Marshal(m)
-	_ = m2.cache.LPush(context.Background(), fmt.Sprintf(common.UnackMessageCacheKey, m.FromUserId, m.ToUserId), string(msgByte), time.Minute)
 	return nil
 }
 
 func (m2 messageEntity) LiseNewMessage(fromUserId, toUserId, timestamp int64) ([]Message, error) {
 	msg := make([]Message, 0)
-
-	messList, err := m2.cache.LRange(context.Background(), fmt.Sprintf(common.UnackMessageCacheKey, fromUserId, toUserId), 0, -1)
-	if err == nil {
-		for _, mess := range messList {
-			item := Message{}
-			_ = json.Unmarshal([]byte(mess), &item)
-			if item.Timestamp > timestamp {
-				msg = append(msg, item)
-			}
-		}
-		_ = m2.cache.LRem(context.Background(), fmt.Sprintf(common.UnackMessageCacheKey, fromUserId, toUserId), 0, int64(len(msg)))
-		return msg, nil
-	}
-
-	err = m2.db.Where("from_user_id = ? AND to_user_id = ? AND timestamp > ?", fromUserId, toUserId, timestamp).Order("timestamp asc").Find(&msg).Error
+	err := m2.db.Where("from_user_id = ? AND to_user_id = ? AND timestamp > ?", fromUserId, toUserId, timestamp).Order("timestamp asc").Find(&msg).Error
 	if err != nil {
 		err = errors.WithStack(err)
 	}
@@ -121,33 +104,17 @@ func (m2 messageEntity) CreateGroupMessage(m *GroupMessage) error {
 			if err != nil {
 				return errors.WithStack(err)
 			}
-			m2.cache.Set(context.Background(), fmt.Sprintf(common.MessageCacheKey, m.Timestamp), "", 2*time.Minute)
+			_ = m2.cache.Set(context.Background(), fmt.Sprintf(common.MessageCacheKey, m.Timestamp), "", 2*time.Minute)
 			return nil
 		}
 		return err
 	}
-	msgByte, _ := json.Marshal(m)
-	_ = m2.cache.LPush(context.Background(), fmt.Sprintf(common.UnackGroupMessageCacheKey, m.GroupId), string(msgByte), time.Minute)
 	return nil
 }
 
 func (m2 messageEntity) ListNewGroupMessage(userId, groupId, timestamp int64) ([]GroupMessage, error) {
 	msg := make([]GroupMessage, 0)
-
-	messList, err := m2.cache.LRange(context.Background(), fmt.Sprintf(common.UnackMessageCacheKey, groupId, userId), 0, -1)
-	if err == nil {
-		for _, mess := range messList {
-			item := GroupMessage{}
-			_ = json.Unmarshal([]byte(mess), &item)
-			if item.Timestamp > timestamp {
-				msg = append(msg, item)
-			}
-		}
-		_ = m2.cache.LRem(context.Background(), fmt.Sprintf(common.UnackGroupMessageCacheKey, groupId), 0, int64(len(msg)))
-		return msg, nil
-	}
-
-	err = m2.db.Where("group_id = ? AND timestamp > ?", groupId, timestamp).Order("timestamp asc").Find(&msg).Error
+	err := m2.db.Where("group_id = ? AND timestamp > ?", groupId, timestamp).Order("timestamp asc").Find(&msg).Error
 	if err != nil {
 		err = errors.WithStack(err)
 	}

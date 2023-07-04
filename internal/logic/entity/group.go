@@ -60,7 +60,7 @@ type GroupEntity interface {
 	AddGroupMember(member GroupMember) error
 	RemoveGroupMember(groupId int64, memberId int64) error
 	ChangeGroupMemberRole(groupId int64, memberId int64, role int8) error
-	UpdateGroupMemberInfo(id int64, member GroupMember) error
+	UpdateGroupMemberInfo(userId int64, member GroupMember) error
 	IsGroupMember(groupId int64, memberId int64) (bool, error)
 }
 
@@ -212,7 +212,7 @@ func (g2 groupEntity) ChangeGroupMemberRole(groupId int64, memberId int64, role 
 }
 
 func (g2 groupEntity) UpdateGroupMemberInfo(id int64, member GroupMember) error {
-	err := g2.db.Where("id=?", id).Select("nickname").Updates(&member).Error
+	err := g2.db.Where("user_id=? AND group_id", id, member.GroupId).Select("nickname").Updates(&member).Error
 	if err != nil {
 		err = errors.WithStack(err)
 	}

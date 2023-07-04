@@ -29,12 +29,12 @@ func ListGroup(c *gin.Context) {
 	var (
 		err  error
 		resp struct {
-			Data []group.GroupInfo `json:"data"`
+			Data []group.Info `json:"data"`
 		}
 	)
 	defer func() {
 		if len(resp.Data) == 0 {
-			resp.Data = make([]group.GroupInfo, 0)
+			resp.Data = make([]group.Info, 0)
 		}
 		response.HttpResponse(c, err, resp)
 	}()
@@ -52,12 +52,12 @@ func SearchGroup(c *gin.Context) {
 		err  error
 		req  group.SearchGroupRequest
 		resp struct {
-			Data []group.GroupInfo `json:"data"`
+			Data []group.Info `json:"data"`
 		}
 	)
 	defer func() {
 		if len(resp.Data) == 0 {
-			resp.Data = make([]group.GroupInfo, 0)
+			resp.Data = make([]group.Info, 0)
 		}
 		response.HttpResponse(c, err, resp)
 	}()
@@ -150,12 +150,12 @@ func ListGroupMembers(c *gin.Context) {
 	var (
 		err  error
 		resp struct {
-			Data []group.GroupMemberInfo `json:"data"`
+			Data []group.MemberInfo `json:"data"`
 		}
 	)
 	defer func() {
 		if len(resp.Data) == 0 {
-			resp.Data = make([]group.GroupMemberInfo, 0)
+			resp.Data = make([]group.MemberInfo, 0)
 		}
 		response.HttpResponse(c, err, resp)
 	}()

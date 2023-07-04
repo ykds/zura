@@ -10,8 +10,8 @@ import (
 var globalCache *atomic.Value
 
 func SetGlobalCache(cache Cache) {
-	v := &atomic.Value{}
-	v.Store(cache)
+	globalCache = &atomic.Value{}
+	globalCache.Store(cache)
 }
 
 func GetGlobalCache() Cache {
@@ -26,6 +26,7 @@ var NotFoundErr = errors.New("key not found")
 type Cache interface {
 	Set(ctx context.Context, key string, value interface{}, ex time.Duration) error
 	Get(ctx context.Context, key string) (string, error)
+	MGet(ctx context.Context, key ...string) ([]string, error)
 	Del(ctx context.Context, key string) error
 	Expire(ctx context.Context, key string, ex time.Duration) error
 	LPush(ctx context.Context, key string, value ...interface{}) error

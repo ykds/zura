@@ -13,6 +13,22 @@ type Redis struct {
 	ctx    context.Context
 }
 
+func (r Redis) MGet(ctx context.Context, key ...string) ([]string, error) {
+	result, err := r.client.MGet(ctx, key...).Result()
+	if err != nil {
+		return nil, err
+	}
+	data := make([]string, 0, len(result))
+	for _, v := range result {
+		if v != nil {
+			data = append(data, v.(string))
+		} else {
+			data = append(data, "")
+		}
+	}
+	return data, nil
+}
+
 func (r Redis) LRem(ctx context.Context, key string, start, end int64) error {
 	return r.client.LRem(ctx, key, start, end).Err()
 }

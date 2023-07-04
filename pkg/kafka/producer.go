@@ -16,6 +16,10 @@ func (p *Producer) WriteMessage(ctx context.Context, key string, value []byte) e
 	})
 }
 
+func (p *Producer) Close() error {
+	return p.w.Close()
+}
+
 type ProducerOption func(writer *kafka.Writer)
 
 func WithCustomBalancer(balancer kafka.Balancer) ProducerOption {
@@ -26,12 +30,17 @@ func WithCustomBalancer(balancer kafka.Balancer) ProducerOption {
 
 func (k *Kafka) NewProducer(topic string, opts ...ProducerOption) *Producer {
 	w := &kafka.Writer{
-		Addr:         kafka.TCP(k.c.Brokers...),
-		Topic:        topic,
-		RequiredAcks: kafka.RequireOne,
+		Addr:                   kafka.TCP(k.c.Brokers...),
+		Topic:                  topic,
+		RequiredAcks:           kafka.RequireOne,
+		AllowAutoTopicCreation: true,
 	}
 	for _, o := range opts {
 		o(w)
 	}
-	return &Producer{w: w}
+	p := &Producer{w: w}
+	k.m.Lock()
+	defer k.m.Unlock()
+	k.producers = append(k.producers, p)
+	return p
 }

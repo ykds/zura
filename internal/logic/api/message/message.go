@@ -14,12 +14,12 @@ func ListHistoryMessage(c *gin.Context) {
 		err  error
 		req  message.ListMessageRequest
 		resp struct {
-			Data []message.MessageItem `json:"data"`
+			Data []message.Item `json:"data"`
 		}
 	)
 	defer func() {
 		if len(resp.Data) == 0 {
-			resp.Data = []message.MessageItem{}
+			resp.Data = []message.Item{}
 		}
 		response.HttpResponse(c, err, resp)
 	}()
@@ -35,12 +35,12 @@ func ListNewMessage(c *gin.Context) {
 		err  error
 		req  message.ListMessageRequest
 		resp struct {
-			Data []message.MessageItem `json:"data"`
+			Data []message.Item `json:"data"`
 		}
 	)
 	defer func() {
 		if len(resp.Data) == 0 {
-			resp.Data = []message.MessageItem{}
+			resp.Data = []message.Item{}
 		}
 		response.HttpResponse(c, err, resp)
 	}()

@@ -4,7 +4,7 @@ import "github.com/ykds/zura/pkg/errors"
 
 const (
 	UnSupportedTypeStatus = iota + 200001
-	UserRegisterdStatus
+	UserRegisteredStatus
 	PasswordNotConsistentStatus
 	VerifyStatusWrongStatus
 	UserNotFoundStatus
@@ -19,7 +19,7 @@ const (
 
 func init() {
 	errors.NewCode(UnSupportedTypeStatus, "不支持该方式")
-	errors.NewCode(UserRegisterdStatus, "用户已注册")
+	errors.NewCode(UserRegisteredStatus, "用户已注册")
 	errors.NewCode(PasswordNotConsistentStatus, "密码不一致")
 	errors.NewCode(VerifyStatusWrongStatus, "验证码错误")
 	errors.NewCode(UserNotFoundStatus, "用户不存在")

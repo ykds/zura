@@ -1,9 +1,7 @@
 package main
 
 import (
-	"context"
 	"flag"
-	"fmt"
 	"github.com/ykds/zura/internal/common"
 	"github.com/ykds/zura/internal/logic/config"
 	"github.com/ykds/zura/internal/logic/entity"
@@ -18,14 +16,9 @@ import (
 	"github.com/ykds/zura/pkg/log/zap"
 	"github.com/ykds/zura/pkg/snowflake"
 	"github.com/ykds/zura/pkg/trace"
-	"github.com/ykds/zura/proto/comet"
-	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 )
 
 var configPath = flag.String("conf", "./config.yaml", "config file path")
@@ -38,13 +31,15 @@ func main() {
 	trace.InitTrace(config.GetConfig().Trace)
 
 	kafkaManager := kafka.NewKafka(config.GetConfig().Kafka)
+	defer kafkaManager.Close()
+
 	producer := kafkaManager.NewProducer(common.LoggingTopic)
 
 	l := zap.NewLogger(
 		config.GetConfig().Log,
 		zap.WithService("logic"),
 		zap.WithDebug(config.GetConfig().Server.Debug),
-		zap.WithOutput(plugin.NewLumberjackLogger(config.GetConfig().Log.Lumberjack), plugin.NewKafkaWriter(producer)))
+		zap.WithOutput(os.Stdout, plugin.NewKafkaWriter(producer)))
 	log.SetGlobalLogger(l)
 
 	database := db.New(&config.GetConfig().Database, db.WithDebug(config.GetConfig().Server.Debug))
@@ -52,19 +47,7 @@ func main() {
 	cache.SetGlobalCache(redis)
 	entity.NewEntity(database, redis)
 
-	ctx2, cancel2 := context.WithTimeout(context.Background(), 2*time.Second)
-	cometConn, err := grpc.DialContext(ctx2,
-		fmt.Sprintf("%s:%s", config.GetConfig().CometServer.Host, config.GetConfig().CometServer.Port),
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithUnaryInterceptor(otelgrpc.UnaryClientInterceptor()),
-	)
-	if err != nil {
-		log.Panicf("new comet grpc client failed, err: %+v", err)
-	}
-	cancel2()
-	cometClient := comet.NewCometClient(cometConn)
-
-	services.NewServices(redis, entity.GetEntity(), cometClient)
+	services.NewServices(redis, entity.GetEntity(), kafkaManager)
 
 	httpServer := server.NewHttpServer(config.GetConfig().HttpServer,
 		server.WithLogger(l),
@@ -79,7 +62,7 @@ func main() {
 	select {
 	case <-sig:
 		logicGrpcSrv.GracefulStop()
-		httpServer.Shutdown()
+		_ = httpServer.Shutdown()
 	}
 	log.Info("exit.")
 }

@@ -8,6 +8,16 @@ services:
     networks:
       - zura
 
+  kafka-ui:
+    image: 'provectuslabs/kafka-ui:latest'
+    ports:
+      - "10010:8080"
+    environment:
+      - KAFKA_CLUSTERS_0_NAME=local
+      - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka1:9092,kafka2:9092,kafka3:9092
+    networks:
+      - zura
+
   kafka1:
     image: 'bitnami/kafka:3.1.0'
     container_name: kafka1
@@ -136,6 +146,7 @@ services:
         - TZ=Asia/Shanghai
       volumes:
         - D:\Project\Go\zura\static\logstah\logstash.conf:/usr/share/logstash/pipeline/logstash.conf
+      command: logstash -f /usr/share/logstash/pipeline/logstash.conf
       depends_on:
         - elasticsearch
       links:
@@ -154,10 +165,18 @@ services:
       depends_on:
         - elasticsearch
       environment:
-        - elasticsearch.hosts=http://es:9200
+        - elasticsearch.hosts=https://es:9200
       networks:
         - zura
 
+  etcd:
+    image: 'bitnami/etcd:latest'
+    environment:
+      - ALLOW_NONE_AUTHENTICATION=yes
+      - ETCD_ADVERTISE_CLIENT_URLS=http://etcd:2379
+    ports:
+      - "2379:2379"
+      - "2380:2380"
 networks:
   zura:
   

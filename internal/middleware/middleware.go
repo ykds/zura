@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+	"fmt"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/logging"
 	"github.com/ykds/zura/pkg/log"
 	"go.opentelemetry.io/otel/trace"
@@ -14,13 +15,13 @@ func InterceptorLogger(l log.Logger) logging.Logger {
 		spanId := sctx.SpanID()
 		switch level {
 		case logging.LevelDebug:
-			l.Debugw(msg, []any{"field", fields, "trace_id", tracId, "span_id", spanId}...)
+			l.Debugw(fmt.Sprintf("%s, field: %v", msg, fields), []any{"trace_id", tracId.String(), "span_id", spanId.String()}...)
 		case logging.LevelInfo:
-			l.Infow(msg, []any{"field", fields, "trace_id", tracId, "span_id", spanId}...)
+			l.Infow(fmt.Sprintf("%s, field: %v", msg, fields), []any{"trace_id", tracId.String(), "span_id", spanId.String()}...)
 		case logging.LevelWarn:
-			l.Warnw(msg, []any{"field", fields, "trace_id", tracId, "span_id", spanId}...)
+			l.Warnw(fmt.Sprintf("%s, field: %v", msg, fields), []any{"trace_id", tracId.String(), "span_id", spanId.String()}...)
 		case logging.LevelError:
-			l.Errorw(msg, []any{"field", fields, "trace_id", tracId, "span_id", spanId}...)
+			l.Errorw(fmt.Sprintf("%s, field: %v", msg, fields), []any{"trace_id", tracId.String(), "span_id", spanId.String()}...)
 		}
 	})
 }

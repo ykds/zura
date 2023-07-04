@@ -10,6 +10,10 @@ type Memory struct {
 	client *cache.Cache
 }
 
+func (m Memory) MGet(ctx context.Context, key ...string) ([]string, error) {
+	panic("implement me")
+}
+
 func (m Memory) LRem(ctx context.Context, key string, start, end int64) error {
 	v, ex, ok := m.client.GetWithExpiration(key)
 	if !ok {

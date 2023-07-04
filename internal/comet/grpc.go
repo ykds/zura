@@ -48,11 +48,21 @@ type GrpcServer struct {
 	srv *Server
 }
 
+func (g *GrpcServer) PushMessage(ctx context.Context, request *comet.PushMsgRequest) (*comet.PushMsgResponse, error) {
+	for _, id := range request.ToUserId {
+		conn, ok := g.srv.onlineUsers[id]
+		if ok {
+			conn.wch <- request.Proto
+		}
+	}
+	return &comet.PushMsgResponse{}, nil
+}
+
 func (g *GrpcServer) PushNotification(ctx context.Context, request *comet.PushNotificationRequest) (*comet.PushNotificationResponse, error) {
 	for _, id := range request.ToUserId {
 		conn, ok := g.srv.onlineUsers[id]
 		if ok {
-			conn.wch <- request.Body
+			conn.wch <- request.Proto
 		}
 	}
 	return &comet.PushNotificationResponse{}, nil

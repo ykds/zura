@@ -14,7 +14,7 @@ type item struct {
 	t          *time.Timer
 }
 
-type Queue struct {
+type TimeQueue struct {
 	timeout int
 	q       []*item
 	imap    map[string]*item
@@ -25,8 +25,8 @@ type Queue struct {
 	notify  chan struct{}
 }
 
-func NewTimeoutQueue(timeout int, size int32) *Queue {
-	return &Queue{
+func NewTimeoutQueue(timeout int, size int32) *TimeQueue {
+	return &TimeQueue{
 		timeout: timeout,
 		size:    size,
 		q:       make([]*item, size),
@@ -35,13 +35,13 @@ func NewTimeoutQueue(timeout int, size int32) *Queue {
 	}
 }
 
-func (q *Queue) Push(id string, fn func()) {
+func (q *TimeQueue) Push(id string, fn func()) {
 	q.m.Lock()
 	defer q.m.Unlock()
 	if q.len == q.size {
 		q.grow()
 	}
-	i := &item{identifier: id, fn: fn, t: time.NewTimer(time.Duration(q.timeout) * time.Second)}
+	i := &item{identifier: id, fn: fn, t: time.NewTimer(time.Duration(q.timeout) * time.Millisecond)}
 	q.q[q.w] = i
 	q.imap[id] = i
 	q.w += 1
@@ -55,11 +55,10 @@ func (q *Queue) Push(id string, fn func()) {
 	}
 }
 
-func (q *Queue) pop() *item {
+func (q *TimeQueue) pop() *item {
 	q.m.Lock()
 	defer q.m.Unlock()
 	i := q.q[q.r]
-	delete(q.imap, i.identifier)
 	q.r += 1
 	if q.r == q.size {
 		q.r = 0
@@ -68,16 +67,29 @@ func (q *Queue) pop() *item {
 	return i
 }
 
-func (q *Queue) Finish(identifier string) {
+func (q *TimeQueue) Finish(identifier string) {
 	q.m.RLock()
-	defer q.m.RUnlock()
 	i, ok := q.imap[identifier]
+	q.m.RUnlock()
 	if ok {
+		q.m.Lock()
+		delete(q.imap, i.identifier)
+		q.m.Unlock()
 		i.finish.Store(true)
 	}
 }
 
-func (q *Queue) grow() {
+func (q *TimeQueue) IsFinished(identifier string) bool {
+	q.m.RLock()
+	defer q.m.RUnlock()
+	i, ok := q.imap[identifier]
+	if ok {
+		return i.finish.Load()
+	}
+	return true
+}
+
+func (q *TimeQueue) grow() {
 	tmp := make([]*item, len(q.q)*2)
 	copy(tmp, q.q)
 	q.q = tmp
@@ -85,7 +97,7 @@ func (q *Queue) grow() {
 	q.w = q.len
 }
 
-func (q *Queue) Run(ctx context.Context) {
+func (q *TimeQueue) Run(ctx context.Context) {
 	for {
 		if q.len == 0 {
 			<-q.notify
@@ -96,7 +108,7 @@ func (q *Queue) Run(ctx context.Context) {
 		}
 		select {
 		case <-i.t.C:
-			i.fn()
+			go i.fn()
 		case <-ctx.Done():
 			return
 		}

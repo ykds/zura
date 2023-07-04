@@ -1,0 +1,17 @@
+syntax="proto3";
+
+package protocol;
+
+option go_package="github.com/ykds/zura/proto/protocol;protocol";
+
+message Protocol {
+  int32 op = 1;
+  bytes body = 2;
+}
+
+message Message {
+  int64 id = 1;
+  int64 timestamp = 2;
+  int64 from_user_id = 3;
+  string content = 5;
+}

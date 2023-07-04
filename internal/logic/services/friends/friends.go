@@ -6,7 +6,7 @@ import (
 	"github.com/ykds/zura/pkg/errors"
 )
 
-func NewFriendsService(friendsEntity entity.FriendEntity, userEntity entity.UserEntity) FriendsService {
+func NewFriendsService(friendsEntity entity.FriendEntity, userEntity entity.UserEntity) Service {
 	return &friendsService{
 		friendEntity: friendsEntity,
 		userEntity:   userEntity,
@@ -19,7 +19,7 @@ type FriendInfo struct {
 	Avatar   string `json:"avatar"`
 }
 
-type FriendsService interface {
+type Service interface {
 	AddFriend(user1Id, user2Id int64) error
 	DeleteFriend(user1Id, user2Id int64) error
 	ListFriends(userId int64) ([]FriendInfo, error)

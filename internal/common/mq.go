@@ -1,5 +1,7 @@
 package common
 
 const (
-	LoggingTopic = "logging"
+	LoggingTopic      = "logging"
+	MessageTopic      = "message"
+	NotificationTopic = "notification"
 )

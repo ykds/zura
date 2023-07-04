@@ -1,13 +1,15 @@
-debug: true
+debug: false
 
 log:
   level: info
-  lumberjack:
-    filename: "./logs/logic.log"
-    max_age: 7
-    max_size: 10
-    max_backups: 5
-    compress: false
-  logstash:
-    host: ""
-    port: "4560"
+
+lumberjack:
+  filename: "./logs/logic.log"
+  max_age: 7
+  max_size: 10
+  max_backups: 5
+  compress: false
+
+logstash:
+  host: ""
+  port: "4560"

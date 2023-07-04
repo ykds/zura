@@ -11,8 +11,8 @@ type kafkaWriter struct {
 }
 
 func (k kafkaWriter) Write(p []byte) (n int, err error) {
-	_ = k.WriteMessage(context.TODO(), "", p)
-	return 0, nil
+	err = k.WriteMessage(context.TODO(), "", p)
+	return 0, err
 }
 
 func NewKafkaWriter(producer *kafka.Producer) io.Writer {

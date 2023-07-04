@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/ykds/zura/internal/logic/config"
 	"github.com/ykds/zura/internal/logic/services"
-	"github.com/ykds/zura/internal/logic/services/message"
 	"github.com/ykds/zura/internal/middleware"
 	"github.com/ykds/zura/pkg/log"
 	"github.com/ykds/zura/pkg/token"
@@ -54,62 +53,18 @@ type LogicGrpcServer struct {
 	srv services.Service
 }
 
-func (l LogicGrpcServer) Auth(ctx context.Context, request *logic.AuthRequest) (*logic.AuthResponse, error) {
+func (l LogicGrpcServer) Connect(ctx context.Context, request *logic.ConnectionRequest) (*logic.ConnectionResponse, error) {
 	userId, err := token.VerifyToken(request.Token)
 	if err != nil {
-		return &logic.AuthResponse{}, err
+		return nil, err
 	}
-	return &logic.AuthResponse{UserId: userId}, nil
-}
-
-func (l LogicGrpcServer) ListNewMessage(ctx context.Context, request *logic.ListNewMessageRequest) (*logic.ListNewMessageResponse, error) {
-	newMessage, err := l.srv.MessageService.ListNewMessage(request.UserId, message.ListMessageRequest{
-		SessionId: request.SessionId,
-		Timestamp: request.Timestamp,
-	})
+	err = l.srv.UserService.Connect(ctx, userId, request.ServerId)
 	if err != nil {
-		return &logic.ListNewMessageResponse{}, err
+		return &logic.ConnectionResponse{}, err
 	}
-	data := make([]*logic.MessageItem, 0, len(newMessage))
-	for _, item := range newMessage {
-		data = append(data, &logic.MessageItem{
-			Id:         item.ID,
-			UniKey:     item.UniKey,
-			SessionId:  item.SessionId,
-			FromUserId: item.SendUserId,
-			Timestamp:  item.Timestamp,
-			Body:       item.Body,
-		})
-	}
-	return &logic.ListNewMessageResponse{
-		Data: data,
+	return &logic.ConnectionResponse{
+		UserId: userId,
 	}, nil
-}
-
-func (l LogicGrpcServer) ListNewApplications(ctx context.Context, request *logic.ListNewApplicationsRequest) (*logic.ListNewApplicationsResponse, error) {
-	applications, err := l.srv.FriendApplicationService.ListNewApplications(request.UserId)
-	if err != nil {
-		return &logic.ListNewApplicationsResponse{}, nil
-	}
-	data := make([]*logic.ApplicationItem, 0, len(applications))
-	for _, app := range applications {
-		data = append(data, &logic.ApplicationItem{
-			Id:          app.ID,
-			UserId:      app.UserId,
-			Markup:      app.Markup,
-			Type:        int32(app.Type),
-			Status:      int32(app.Status),
-			UpdatedTime: app.UpdatedTime,
-		})
-	}
-	return &logic.ListNewApplicationsResponse{
-		Data: data,
-	}, nil
-}
-
-func (l LogicGrpcServer) Connect(ctx context.Context, request *logic.ConnectionRequest) (*logic.ConnectionResponse, error) {
-	err := l.srv.UserService.Connect(ctx, request.UserId)
-	return &logic.ConnectionResponse{}, err
 }
 
 func (l LogicGrpcServer) Disconnect(ctx context.Context, request *logic.DisconnectRequest) (*logic.DisconnectResponse, error) {

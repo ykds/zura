@@ -23,7 +23,7 @@ const (
 	EmailType    = "email"
 )
 
-func NewUserService(cache cache.Cache, userEntity entity.UserEntity, verifyCodeService verify_code.VerifyCodeService) UserService {
+func NewUserService(cache cache.Cache, userEntity entity.UserEntity, verifyCodeService verify_code.VerifyCodeService) Service {
 	return &userService{
 		cache:             cache,
 		userEntity:        userEntity,
@@ -80,7 +80,7 @@ type OtherUserInfo struct {
 	Avatar   string `json:"avatar"`
 }
 
-type UserService interface {
+type Service interface {
 	Register(req RegisterRequest) error
 	Login(req LoginRequest) (LoginResponse, error)
 	Logout(userId int64) error
@@ -89,7 +89,7 @@ type UserService interface {
 	ChangePassword(userId int64, req ChangePasswordRequest) error
 	SearchUser(req SearchUsersRequest) ([]OtherUserInfo, error)
 
-	Connect(ctx context.Context, userId int64) error
+	Connect(ctx context.Context, userId int64, serverId int32) error
 	DisConnect(ctx context.Context, userId int64) error
 	HeartBeat(ctx context.Context, userId int64) error
 }
@@ -100,10 +100,10 @@ type userService struct {
 	verifyCodeService verify_code.VerifyCodeService
 }
 
-func (u *userService) Connect(ctx context.Context, userId int64) error {
+func (u *userService) Connect(ctx context.Context, userId int64, serverId int32) error {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
-	return u.cache.Set(ctx, fmt.Sprintf(common.UserOnlineCacheKey, userId), "", time.Duration(config.GetConfig().Session.HeartbeatInterval)*time.Second)
+	return u.cache.Set(ctx, fmt.Sprintf(common.UserOnlineCacheKey, userId), serverId, time.Duration(config.GetConfig().Session.HeartbeatInterval)*time.Second)
 }
 
 func (u *userService) DisConnect(ctx context.Context, userId int64) error {
@@ -169,7 +169,7 @@ func (u *userService) Register(req RegisterRequest) error {
 			return errors.WithStack(err)
 		}
 	} else {
-		return errors.New(codec.UserRegisterdStatus)
+		return errors.New(codec.UserRegisteredStatus)
 	}
 
 	if req.Password != req.ConfirmPassword {

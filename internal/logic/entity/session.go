@@ -16,6 +16,7 @@ const (
 type UserSession struct {
 	BaseModel
 	SessionType int8  `json:"session_type"`
+	SessionKey  int64 `json:"session_key"`
 	UserId      int64 `json:"user_id" gorm:"index"`
 	TargetId    int64 `json:"target_id" gorm:"index"`
 	IsSticky    bool  `json:"is_sticky"`
@@ -35,7 +36,7 @@ func NewSessionEntity(cache cache.Cache, db *db.Database) SessionEntity {
 type SessionEntity interface {
 	Transaction
 	GetUserSession(where map[string]interface{}) (UserSession, error)
-	GetUserSessionById(id int64) (UserSession, error)
+	GetUserSessionById(userId int64, sessionKey int64) (UserSession, error)
 	ListSession(userId int64) ([]UserSession, error)
 	CreateUserSessionTx(tx *gorm.DB, us UserSession) error
 	UpdateUserSession(id int64, session UserSession) error
@@ -77,7 +78,7 @@ func (s2 sessionEntity) CreateUserSessionTx(tx *gorm.DB, us UserSession) error {
 }
 
 func (s2 sessionEntity) UpdateUserSession(id int64, session UserSession) error {
-	err := s2.db.Where("id=?", id).Omit("session_type", "user_id", "target_id").Updates(&session).Error
+	err := s2.db.Where("id=?", id).Omit("session_type", "user_id", "target_id", "session_key").Updates(&session).Error
 	if err != nil {
 		err = errors.WithStack(err)
 	}
@@ -92,9 +93,9 @@ func (s2 sessionEntity) DeleteUserSession(id int64) error {
 	return err
 }
 
-func (s2 sessionEntity) GetUserSessionById(id int64) (UserSession, error) {
+func (s2 sessionEntity) GetUserSessionById(userId, sessionKey int64) (UserSession, error) {
 	us := UserSession{}
-	err := s2.db.Where("id = ?", id).First(&us).Error
+	err := s2.db.Where("user_id = ? AND session_key=?", userId, sessionKey).First(&us).Error
 	if err != nil {
 		err = errors.WithStack(err)
 	}

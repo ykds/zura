@@ -3,17 +3,25 @@ package friend_application
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"github.com/ykds/zura/internal/common"
 	"github.com/ykds/zura/internal/logic/codec"
 	"github.com/ykds/zura/internal/logic/entity"
+	"github.com/ykds/zura/pkg/cache"
 	"github.com/ykds/zura/pkg/errors"
-	"github.com/ykds/zura/proto/comet"
+	"github.com/ykds/zura/pkg/kafka"
+	"github.com/ykds/zura/pkg/log"
+	"github.com/ykds/zura/proto/logic"
+	"github.com/ykds/zura/proto/protocol"
 	"gorm.io/gorm"
+	"strconv"
 	"time"
 )
 
-func NewFriendApplicationService(cometClient comet.CometClient, friendApplicationEntity entity.FriendApplicationEntity, friendEntity entity.FriendEntity) FriendApplicationService {
+func NewFriendApplicationService(cache cache.Cache, kafkaProducer *kafka.Producer, friendApplicationEntity entity.FriendApplicationEntity, friendEntity entity.FriendEntity) FriendApplicationService {
 	return &friendApplicationService{
-		cometClient:             cometClient,
+		cache:                   cache,
+		kafkaProducer:           kafkaProducer,
 		friendApplicationEntity: friendApplicationEntity,
 		friendEntity:            friendEntity,
 	}
@@ -47,7 +55,8 @@ type FriendApplicationService interface {
 }
 
 type friendApplicationService struct {
-	cometClient             comet.CometClient
+	cache                   cache.Cache
+	kafkaProducer           *kafka.Producer
 	friendApplicationEntity entity.FriendApplicationEntity
 	friendEntity            entity.FriendEntity
 }
@@ -99,11 +108,17 @@ func (f *friendApplicationService) ApplyFriend(userId int64, req ApplyRequest) e
 			return err
 		}
 	}
-	body, _ := json.Marshal(map[string]interface{}{"op": comet.Op_NewApplication})
-	_, err = f.cometClient.PushNotification(context.Background(), &comet.PushNotificationRequest{
-		ToUserId: []int64{userId},
-		Body:     body,
-	})
+	result, err := f.cache.Get(context.Background(), fmt.Sprintf(common.UserOnlineCacheKey, userId))
+	if err != nil {
+		return err
+	}
+	serverId, _ := strconv.ParseInt(result, 10, 64)
+	msg := &logic.PushNotification{Op: protocol.OpNewApplication, ToUserId: []int64{userId}, Server: int32(serverId)}
+	marshal, _ := json.Marshal(msg)
+	err = f.kafkaProducer.WriteMessage(context.TODO(), "", marshal)
+	if err != nil {
+		log.Errorf("push notification error: %v", err)
+	}
 	return err
 }
 
@@ -167,41 +182,40 @@ func (f *friendApplicationService) UpdateApplicationStatus(userId int64, id int6
 		return errors.WithStackByCode(codec.HandleSelfApplyErrCode)
 	}
 	// 添加好友，更新记录状态为通过
+	tx := f.friendApplicationEntity.Begin()
 	if status == entity.Agree {
-		tx := f.friendApplicationEntity.Begin()
 		err = f.friendEntity.AddFriendTx(tx, fa.User1Id, fa.User2Id)
 		if err != nil {
-			f.friendApplicationEntity.Rollback(tx)
+			tx.Rollback()
 			return err
 		}
 		err = f.friendApplicationEntity.UpdateApplicationStatusTx(tx, id, status)
 		if err != nil {
-			f.friendApplicationEntity.Rollback(tx)
+			tx.Rollback()
 			return err
 		}
-		body, _ := json.Marshal(map[string]interface{}{"op": comet.Op_ApplicationHandleResult, "id": id, "status": status})
-		_, err = f.cometClient.PushNotification(context.Background(), &comet.PushNotificationRequest{
-			ToUserId: []int64{fa.User2Id},
-			Body:     body,
-		})
-		if err != nil {
-			f.friendApplicationEntity.Rollback(tx)
-			return err
-		}
-		f.friendApplicationEntity.Commit(tx)
-		return nil
 	} else {
-		err = f.friendApplicationEntity.UpdateApplicationStatus(id, status)
+		err = f.friendApplicationEntity.UpdateApplicationStatusTx(tx, id, status)
 		if err != nil {
 			return err
 		}
-		body, _ := json.Marshal(map[string]interface{}{"op": comet.Op_ApplicationHandleResult, "id": id, "status": status})
-		_, err = f.cometClient.PushNotification(context.Background(), &comet.PushNotificationRequest{
-			ToUserId: []int64{fa.User2Id},
-			Body:     body,
-		})
+	}
+	result, err := f.cache.Get(context.Background(), fmt.Sprintf(common.UserOnlineCacheKey, userId))
+	if err != nil {
+		tx.Rollback()
 		return err
 	}
+	serverId, _ := strconv.ParseInt(result, 10, 64)
+	body, _ := json.Marshal(map[string]interface{}{"id": id, "status": status})
+	msg := &logic.PushNotification{Op: protocol.OpApplicationHandlerResult, ToUserId: []int64{userId}, Server: int32(serverId), Body: body}
+	marshal, _ := json.Marshal(msg)
+	err = f.kafkaProducer.WriteMessage(context.TODO(), "", marshal)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	tx.Commit()
+	return nil
 }
 
 func (f *friendApplicationService) DeleteApplication(id int64, userId int64) error {

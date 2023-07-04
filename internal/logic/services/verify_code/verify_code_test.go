@@ -1,7 +1,6 @@
 package verify_code
 
 import (
-	"context"
 	"github.com/ykds/zura/pkg/cache"
 	"testing"
 )
@@ -12,7 +11,7 @@ var (
 
 func Init() {
 	cfg := cache.DefaultConfig()
-	service = NewVerifyCodeService(cache.NewRedis(context.TODO(), &cfg))
+	service = NewVerifyCodeService(cache.NewRedis(cfg))
 }
 
 func Test_verifyCodeService_GenVerifyCode(t *testing.T) {

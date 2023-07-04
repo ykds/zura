@@ -22,12 +22,9 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type LogicClient interface {
-	Auth(ctx context.Context, in *AuthRequest, opts ...grpc.CallOption) (*AuthResponse, error)
 	Connect(ctx context.Context, in *ConnectionRequest, opts ...grpc.CallOption) (*ConnectionResponse, error)
 	Disconnect(ctx context.Context, in *DisconnectRequest, opts ...grpc.CallOption) (*DisconnectResponse, error)
 	HeartBeat(ctx context.Context, in *HeartBeatRequest, opts ...grpc.CallOption) (*HeartBeatResponse, error)
-	ListNewMessage(ctx context.Context, in *ListNewMessageRequest, opts ...grpc.CallOption) (*ListNewMessageResponse, error)
-	ListNewApplications(ctx context.Context, in *ListNewApplicationsRequest, opts ...grpc.CallOption) (*ListNewApplicationsResponse, error)
 }
 
 type logicClient struct {
@@ -36,15 +33,6 @@ type logicClient struct {
 
 func NewLogicClient(cc grpc.ClientConnInterface) LogicClient {
 	return &logicClient{cc}
-}
-
-func (c *logicClient) Auth(ctx context.Context, in *AuthRequest, opts ...grpc.CallOption) (*AuthResponse, error) {
-	out := new(AuthResponse)
-	err := c.cc.Invoke(ctx, "/logic.Logic/Auth", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
 }
 
 func (c *logicClient) Connect(ctx context.Context, in *ConnectionRequest, opts ...grpc.CallOption) (*ConnectionResponse, error) {
@@ -74,34 +62,13 @@ func (c *logicClient) HeartBeat(ctx context.Context, in *HeartBeatRequest, opts 
 	return out, nil
 }
 
-func (c *logicClient) ListNewMessage(ctx context.Context, in *ListNewMessageRequest, opts ...grpc.CallOption) (*ListNewMessageResponse, error) {
-	out := new(ListNewMessageResponse)
-	err := c.cc.Invoke(ctx, "/logic.Logic/ListNewMessage", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *logicClient) ListNewApplications(ctx context.Context, in *ListNewApplicationsRequest, opts ...grpc.CallOption) (*ListNewApplicationsResponse, error) {
-	out := new(ListNewApplicationsResponse)
-	err := c.cc.Invoke(ctx, "/logic.Logic/ListNewApplications", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 // LogicServer is the server API for Logic service.
 // All implementations must embed UnimplementedLogicServer
 // for forward compatibility
 type LogicServer interface {
-	Auth(context.Context, *AuthRequest) (*AuthResponse, error)
 	Connect(context.Context, *ConnectionRequest) (*ConnectionResponse, error)
 	Disconnect(context.Context, *DisconnectRequest) (*DisconnectResponse, error)
 	HeartBeat(context.Context, *HeartBeatRequest) (*HeartBeatResponse, error)
-	ListNewMessage(context.Context, *ListNewMessageRequest) (*ListNewMessageResponse, error)
-	ListNewApplications(context.Context, *ListNewApplicationsRequest) (*ListNewApplicationsResponse, error)
 	mustEmbedUnimplementedLogicServer()
 }
 
@@ -109,9 +76,6 @@ type LogicServer interface {
 type UnimplementedLogicServer struct {
 }
 
-func (UnimplementedLogicServer) Auth(context.Context, *AuthRequest) (*AuthResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Auth not implemented")
-}
 func (UnimplementedLogicServer) Connect(context.Context, *ConnectionRequest) (*ConnectionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Connect not implemented")
 }
@@ -120,12 +84,6 @@ func (UnimplementedLogicServer) Disconnect(context.Context, *DisconnectRequest) 
 }
 func (UnimplementedLogicServer) HeartBeat(context.Context, *HeartBeatRequest) (*HeartBeatResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method HeartBeat not implemented")
-}
-func (UnimplementedLogicServer) ListNewMessage(context.Context, *ListNewMessageRequest) (*ListNewMessageResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ListNewMessage not implemented")
-}
-func (UnimplementedLogicServer) ListNewApplications(context.Context, *ListNewApplicationsRequest) (*ListNewApplicationsResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ListNewApplications not implemented")
 }
 func (UnimplementedLogicServer) mustEmbedUnimplementedLogicServer() {}
 
@@ -138,24 +96,6 @@ type UnsafeLogicServer interface {
 
 func RegisterLogicServer(s grpc.ServiceRegistrar, srv LogicServer) {
 	s.RegisterService(&Logic_ServiceDesc, srv)
-}
-
-func _Logic_Auth_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(AuthRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(LogicServer).Auth(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/logic.Logic/Auth",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(LogicServer).Auth(ctx, req.(*AuthRequest))
-	}
-	return interceptor(ctx, in, info, handler)
 }
 
 func _Logic_Connect_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -212,42 +152,6 @@ func _Logic_HeartBeat_Handler(srv interface{}, ctx context.Context, dec func(int
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Logic_ListNewMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ListNewMessageRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(LogicServer).ListNewMessage(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/logic.Logic/ListNewMessage",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(LogicServer).ListNewMessage(ctx, req.(*ListNewMessageRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Logic_ListNewApplications_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ListNewApplicationsRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(LogicServer).ListNewApplications(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/logic.Logic/ListNewApplications",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(LogicServer).ListNewApplications(ctx, req.(*ListNewApplicationsRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 // Logic_ServiceDesc is the grpc.ServiceDesc for Logic service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -255,10 +159,6 @@ var Logic_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "logic.Logic",
 	HandlerType: (*LogicServer)(nil),
 	Methods: []grpc.MethodDesc{
-		{
-			MethodName: "Auth",
-			Handler:    _Logic_Auth_Handler,
-		},
 		{
 			MethodName: "Connect",
 			Handler:    _Logic_Connect_Handler,
@@ -270,14 +170,6 @@ var Logic_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "HeartBeat",
 			Handler:    _Logic_HeartBeat_Handler,
-		},
-		{
-			MethodName: "ListNewMessage",
-			Handler:    _Logic_ListNewMessage_Handler,
-		},
-		{
-			MethodName: "ListNewApplications",
-			Handler:    _Logic_ListNewApplications_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

@@ -24,11 +24,22 @@ type UserInfo struct {
 	UpdatedUsernameAt time.Time `json:"updated_username_at"`
 }
 
-func (u User) TableName() string {
+func (u *User) TableName() string {
 	return "zura_users"
 }
 
-func (u User) BeforeUpdate(_ *gorm.DB) (err error) {
+func (u *User) BeforeCreate(tx *gorm.DB) (err error) {
+	err = u.BaseModel.BeforeCreate(tx)
+	if err != nil {
+		return err
+	}
+	u.UpdatedPhoneAt = time.Now()
+	u.UpdatedEmailAt = time.Now()
+	u.UpdatedUsernameAt = time.Now()
+	return
+}
+
+func (u *User) BeforeUpdate(_ *gorm.DB) (err error) {
 	if u.Phone != "" {
 		u.UpdatedPhoneAt = time.Now()
 	}

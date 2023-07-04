@@ -14,7 +14,7 @@ type logstashWriter struct {
 	conn net.Conn
 }
 
-func NewLogstash(c LogstashConfig) io.Writer {
+func NewLogstash(c LogstashConfig) io.WriteCloser {
 	conn, err := net.Dial("tcp", c.Host+":"+c.Port)
 	if err != nil {
 		panic(err)
@@ -24,4 +24,8 @@ func NewLogstash(c LogstashConfig) io.Writer {
 
 func (l *logstashWriter) Write(p []byte) (n int, err error) {
 	return l.conn.Write(p)
+}
+
+func (l *logstashWriter) Close() error {
+	return l.conn.Close()
 }

@@ -4,25 +4,23 @@ package comet;
 
 option go_package="github.com/ykds/zura/proto/comet;comet";
 
-enum Op {
-  Empty = 0;
-  NewMsg = 1;
-  NewApplication = 2;
-  ApplicationHandleResult = 3;
+import "proto/protocol/protocol.proto";
 
-  SynNewMsg = 4;
-  NewMsgReply = 5;
-  Heartbeat = 6;
-  HeartbeatReply = 7;
+message PushMsgRequest {
+  int32 op = 1;
+  repeated int64 to_user_id = 2;
+  protocol.Protocol proto = 3;
 }
+message PushMsgResponse {}
 
 message PushNotificationRequest {
   repeated int64 to_user_id = 1;
-  bytes body = 2;
+  protocol.Protocol proto = 2;
 }
 
 message PushNotificationResponse {}
 
 service Comet {
   rpc PushNotification(PushNotificationRequest) returns(PushNotificationResponse);
+  rpc PushMessage(PushMsgRequest) returns(PushMsgResponse);
 }

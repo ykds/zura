@@ -7,7 +7,7 @@ import (
 	"github.com/ykds/zura/pkg/random"
 )
 
-func NewGroupServer(groupEntity entity.GroupEntity, userEntity entity.UserEntity, sessionEntity entity.SessionEntity) GroupService {
+func NewGroupServer(groupEntity entity.GroupEntity, userEntity entity.UserEntity, sessionEntity entity.SessionEntity) Service {
 	return &groupService{
 		groupEntity:   groupEntity,
 		userEntity:    userEntity,
@@ -20,7 +20,7 @@ type CreateGroupRequest struct {
 	Avatar string `json:"avatar"`
 }
 
-type GroupInfo struct {
+type Info struct {
 	ID      int64  `json:"id"`
 	No      string `json:"no"`
 	Name    string `json:"name"`
@@ -50,7 +50,7 @@ type UpdateMemberInfoRequest struct {
 	NickName string `json:"nick_name"`
 }
 
-type GroupMemberInfo struct {
+type MemberInfo struct {
 	UserId   int64  `json:"user_id"`
 	Username string `json:"username"`
 	Avatar   string `json:"avatar"`
@@ -69,18 +69,18 @@ type SearchGroupRequest struct {
 	Name string `form:"name"`
 }
 
-type GroupService interface {
+type Service interface {
 	CreateGroup(userId int64, req CreateGroupRequest) error
-	ListGroup(userId int64) ([]GroupInfo, error)
+	ListGroup(userId int64) ([]Info, error)
 	UpdateGroup(userId int64, req UpdateGroupRequest) error
 	DismissGroup(userId int64, groupId int64) error
 
 	AddGroupMember(userId int64, req AddGroupMemberRequest) error
 	RemoveGroupMember(userId int64, req RemoveGroupMemberRequest) error
 	UpdateMemberInfo(userId int64, req UpdateMemberInfoRequest) error
-	ListGroupMembers(userId int64, groupId int64) ([]GroupMemberInfo, error)
+	ListGroupMembers(userId int64, groupId int64) ([]MemberInfo, error)
 	ChangeMemberRole(userId int64, req ChangeMemberRoleRequest) error
-	SearchGroup(req SearchGroupRequest) ([]GroupInfo, error)
+	SearchGroup(req SearchGroupRequest) ([]Info, error)
 }
 
 type groupService struct {
@@ -89,7 +89,7 @@ type groupService struct {
 	sessionEntity entity.SessionEntity
 }
 
-func (g groupService) SearchGroup(req SearchGroupRequest) ([]GroupInfo, error) {
+func (g groupService) SearchGroup(req SearchGroupRequest) ([]Info, error) {
 	where := make(map[string]interface{})
 	if req.No != "" {
 		where["no"] = req.No
@@ -101,9 +101,9 @@ func (g groupService) SearchGroup(req SearchGroupRequest) ([]GroupInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	infos := make([]GroupInfo, 0, len(group))
+	infos := make([]Info, 0, len(group))
 	for _, item := range group {
-		infos = append(infos, GroupInfo{
+		infos = append(infos, Info{
 			ID:      item.ID,
 			No:      item.No,
 			Name:    item.Name,
@@ -139,14 +139,14 @@ func (g groupService) CreateGroup(userId int64, req CreateGroupRequest) error {
 	return err
 }
 
-func (g groupService) ListGroup(userId int64) ([]GroupInfo, error) {
+func (g groupService) ListGroup(userId int64) ([]Info, error) {
 	group, err := g.ListGroup(userId)
 	if err != nil {
 		return nil, err
 	}
-	result := make([]GroupInfo, 0, len(group))
+	result := make([]Info, 0, len(group))
 	for _, g := range group {
-		result = append(result, GroupInfo{
+		result = append(result, Info{
 			ID:      g.ID,
 			No:      g.No,
 			Name:    g.Name,
@@ -236,12 +236,13 @@ func (g groupService) RemoveGroupMember(userId int64, req RemoveGroupMemberReque
 }
 
 func (g groupService) UpdateMemberInfo(userId int64, req UpdateMemberInfoRequest) error {
-	return g.groupEntity.UpdateGroupMemberInfo(req.GroupId, entity.GroupMember{
+	return g.groupEntity.UpdateGroupMemberInfo(userId, entity.GroupMember{
+		GroupId:  req.GroupId,
 		Nickname: req.NickName,
 	})
 }
 
-func (g groupService) ListGroupMembers(userId int64, groupId int64) ([]GroupMemberInfo, error) {
+func (g groupService) ListGroupMembers(userId int64, groupId int64) ([]MemberInfo, error) {
 	ok, err := g.groupEntity.IsGroupMember(groupId, userId)
 	if err != nil {
 		return nil, err
@@ -253,13 +254,13 @@ func (g groupService) ListGroupMembers(userId int64, groupId int64) ([]GroupMemb
 	if err != nil {
 		return nil, err
 	}
-	result := make([]GroupMemberInfo, 0, len(members))
+	result := make([]MemberInfo, 0, len(members))
 	for _, item := range members {
 		user, err := g.userEntity.GetUserById(item.UserId)
 		if err != nil {
 			return nil, err
 		}
-		result = append(result, GroupMemberInfo{
+		result = append(result, MemberInfo{
 			UserId:   item.UserId,
 			Username: user.Username,
 			Avatar:   user.Avatar,

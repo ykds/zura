@@ -6,6 +6,6 @@ import (
 )
 
 func TestLogger(t *testing.T) {
-	l := NewLogger(log.DefaultConfig(), WithLogstash(), WithDebug(true))
+	l := NewLogger(log.DefaultConfig(), WithDebug(true))
 	l.Errorf("test logging")
 }

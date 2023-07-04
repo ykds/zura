@@ -1,6 +1,7 @@
 package comet
 
 import (
+	"github.com/ykds/zura/pkg/discovery"
 	"github.com/ykds/zura/pkg/kafka"
 	"github.com/ykds/zura/pkg/log"
 	"github.com/ykds/zura/pkg/trace"
@@ -12,8 +13,13 @@ func GetConfig() *Config {
 	return cfg
 }
 
+type ServerConfig struct {
+	ID    int32 `json:"id" yaml:"id"`
+	Debug bool  `json:"debug" yaml:"debug"`
+}
+
 type Config struct {
-	Debug      bool             `json:"debug" yaml:"debug"`
+	Server     ServerConfig     `json:"server" yaml:"server"`
 	HttpServer HttpServerConfig `json:"http_server" yaml:"http_server"`
 	GrpcServer GrpcServerConfig `json:"grpc_server" yaml:"grpc_server"`
 	Logic      Logic            `json:"logic" yaml:"logic"`
@@ -21,6 +27,7 @@ type Config struct {
 	Session    Session          `json:"session" yaml:"session"`
 	Trace      trace.Config     `json:"trace" yaml:"trace"`
 	Kafka      kafka.Config     `json:"kafka" yaml:"kafka"`
+	Etcd       discovery.Config `json:"etcd" yaml:"etcd"`
 }
 
 type HttpServerConfig struct {
@@ -33,7 +40,9 @@ type GrpcServerConfig struct {
 
 func DefaultConfig() *Config {
 	return &Config{
-		Debug: true,
+		Server: ServerConfig{
+			Debug: true,
+		},
 		HttpServer: HttpServerConfig{
 			Port: "9080",
 		},
@@ -52,6 +61,9 @@ func DefaultConfig() *Config {
 			ServiceName: "comet",
 		},
 		Kafka: kafka.DefaultConfig(),
+		Etcd: discovery.Config{
+			Urls: []string{"http://localhost:2379"},
+		},
 	}
 }
 

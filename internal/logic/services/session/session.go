@@ -4,10 +4,11 @@ import (
 	"github.com/ykds/zura/internal/logic/codec"
 	"github.com/ykds/zura/internal/logic/entity"
 	"github.com/ykds/zura/pkg/errors"
+	"github.com/ykds/zura/pkg/snowflake"
 	"gorm.io/gorm"
 )
 
-func NewSessionService(sessionEntity entity.SessionEntity, groupEntity entity.GroupEntity, userEntity entity.UserEntity) SessionService {
+func NewSessionService(sessionEntity entity.SessionEntity, groupEntity entity.GroupEntity, userEntity entity.UserEntity) Service {
 	return &sessionService{
 		userEntity:    userEntity,
 		sessionEntity: sessionEntity,
@@ -20,8 +21,9 @@ type CreateSessionRequest struct {
 	TargetId    int64 `json:"target_id"`
 }
 
-type SessionInfo struct {
+type Info struct {
 	SessionId     int64  `json:"session_id"`
+	SessionKey    int64  `json:"session_key"`
 	SessionName   string `json:"session_name"`
 	SessionAvatar string `json:"session_avatar"`
 	IsSticky      bool   `json:"is_sticky"`
@@ -31,9 +33,9 @@ type UpdateUserSessionRequest struct {
 	IsSticky bool `json:"is_sticky"`
 }
 
-type SessionService interface {
-	CreateSession(userId int64, req CreateSessionRequest) (SessionInfo, error)
-	ListSession(userId int64) ([]SessionInfo, error)
+type Service interface {
+	CreateSession(userId int64, req CreateSessionRequest) (Info, error)
+	ListSession(userId int64) ([]Info, error)
 	DeleteUserSession(userId int64, id int64) error
 	UpdateUserSession(userId int64, id int64, req UpdateUserSessionRequest) error
 }
@@ -44,56 +46,68 @@ type sessionService struct {
 	groupEntity   entity.GroupEntity
 }
 
-func (s sessionService) CreateSession(userId int64, req CreateSessionRequest) (SessionInfo, error) {
+func (s sessionService) CreateSession(userId int64, req CreateSessionRequest) (Info, error) {
 	if userId == req.TargetId {
-		return SessionInfo{}, errors.WithStackByCode(codec.OpenWithSelfErrCode)
+		return Info{}, errors.WithStackByCode(codec.OpenWithSelfErrCode)
 	}
 	session, err := s.sessionEntity.GetUserSession(map[string]interface{}{"session_type": req.SessionType, "user_id": userId, "target_id": req.TargetId})
 	if err != nil {
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
-			return SessionInfo{}, err
+			return Info{}, err
+		}
+		tx := s.sessionEntity.Begin()
+
+		var sessionKey int64
+		userSession, err := s.sessionEntity.GetUserSession(map[string]interface{}{"session_type": req.SessionType, "user_id": req.TargetId, "target_id": userId})
+		if err != nil {
+			if !errors.Is(err, gorm.ErrRecordNotFound) {
+				return Info{}, err
+			}
+			sessionKey = snowflake.NewId()
+			err = s.sessionEntity.CreateUserSessionTx(tx, entity.UserSession{SessionType: req.SessionType, UserId: req.TargetId, TargetId: userId, SessionKey: sessionKey})
+			if err != nil {
+				tx.Rollback()
+				return Info{}, err
+			}
+		} else {
+			sessionKey = userSession.SessionKey
 		}
 		err = nil
-		tx := s.sessionEntity.Begin()
-		err = s.sessionEntity.CreateUserSessionTx(tx, entity.UserSession{SessionType: req.SessionType, UserId: userId, TargetId: req.TargetId})
+		session = entity.UserSession{SessionType: req.SessionType, UserId: userId, TargetId: req.TargetId, SessionKey: sessionKey}
+		err = s.sessionEntity.CreateUserSessionTx(tx, session)
 		if err != nil {
 			tx.Rollback()
-			return SessionInfo{}, err
-		}
-		err = s.sessionEntity.CreateUserSessionTx(tx, entity.UserSession{SessionType: req.SessionType, UserId: req.TargetId, TargetId: userId})
-		if err != nil {
-			tx.Rollback()
-			return SessionInfo{}, err
+			return Info{}, err
 		}
 		tx.Commit()
-		session, _ = s.sessionEntity.GetUserSession(map[string]interface{}{"session_type": req.SessionType, "user_id": userId, "target_id": req.TargetId})
 	}
-	info := SessionInfo{
-		SessionId: session.ID,
-		IsSticky:  session.IsSticky,
+	info := Info{
+		SessionId:  session.ID,
+		SessionKey: session.SessionKey,
+		IsSticky:   session.IsSticky,
 	}
 	switch req.SessionType {
 	case entity.PointSession:
 		user, err := s.userEntity.GetUserById(req.TargetId)
 		if err != nil {
-			return SessionInfo{}, err
+			return Info{}, err
 		}
 		info.SessionName = user.Username
 		info.SessionAvatar = user.Avatar
 	case entity.GroupSession:
 		group, err := s.groupEntity.GetGroup(req.TargetId)
 		if err != nil {
-			return SessionInfo{}, err
+			return Info{}, err
 		}
 		info.SessionName = group.Name
 		info.SessionAvatar = group.Avatar
 	default:
-		return SessionInfo{}, errors.WithStackByCode(codec.UnSupportSessionType)
+		return Info{}, errors.WithStackByCode(codec.UnSupportSessionType)
 	}
 	return info, nil
 }
 
-func (s sessionService) ListSession(userId int64) ([]SessionInfo, error) {
+func (s sessionService) ListSession(userId int64) ([]Info, error) {
 	session, err := s.sessionEntity.ListSession(userId)
 	if err != nil {
 		return nil, err
@@ -125,9 +139,9 @@ func (s sessionService) ListSession(userId int64) ([]SessionInfo, error) {
 		groupMap[g.ID] = g
 	}
 
-	result := make([]SessionInfo, 0)
+	result := make([]Info, 0)
 	for _, item := range session {
-		info := SessionInfo{
+		info := Info{
 			SessionId: item.ID,
 			IsSticky:  item.IsSticky,
 		}
@@ -153,24 +167,24 @@ func (s sessionService) ListSession(userId int64) ([]SessionInfo, error) {
 }
 
 func (s sessionService) DeleteUserSession(userId int64, id int64) error {
-	session, err := s.sessionEntity.GetUserSessionById(id)
+	_, err := s.sessionEntity.GetUserSessionById(userId, id)
 	if err != nil {
 		return err
 	}
-	if session.UserId != userId {
-		return errors.WithStackByCode(codec.NotPermitCode)
-	}
+	//if session.UserId != userId {
+	//	return errors.WithStackByCode(codec.NotPermitCode)
+	//}
 	return s.sessionEntity.DeleteUserSession(id)
 }
 
 func (s sessionService) UpdateUserSession(userId int64, id int64, req UpdateUserSessionRequest) error {
-	session, err := s.sessionEntity.GetUserSessionById(id)
+	_, err := s.sessionEntity.GetUserSessionById(userId, id)
 	if err != nil {
 		return err
 	}
-	if session.UserId != userId {
-		return errors.WithStackByCode(codec.NotPermitCode)
-	}
+	//if session.UserId != userId {
+	//	return errors.WithStackByCode(codec.NotPermitCode)
+	//}
 	return s.sessionEntity.UpdateUserSession(id, entity.UserSession{
 		IsSticky: req.IsSticky,
 	})

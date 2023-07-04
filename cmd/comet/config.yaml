@@ -1,4 +1,6 @@
-debug: true
+server:
+  id: 1
+  debug: false
 
 http_server:
   port: "9000"
@@ -12,15 +14,17 @@ logic:
 
 log:
   level: info
-  lumberjack:
-    filename: "./logs/logic.log"
-    max_age: 7
-    max_size: 10
-    max_backups: 5
-    compress: false
-  logstash:
-    host: ""
-    port: "4560"
+
+lumberjack:
+  filename: "./logs/logic.log"
+  max_age: 7
+  max_size: 10
+  max_backups: 5
+  compress: false
+
+logstash:
+  host: ""
+  port: "4560"
 
 
 session:

@@ -16,7 +16,7 @@ func CreateSession(c *gin.Context) {
 	var (
 		err  error
 		req  session.CreateSessionRequest
-		resp session.SessionInfo
+		resp session.Info
 	)
 	defer func() {
 		response.HttpResponse(c, err, resp)
@@ -33,12 +33,12 @@ func ListSession(c *gin.Context) {
 	var (
 		err  error
 		resp struct {
-			Data []session.SessionInfo `json:"data"`
+			Data []session.Info `json:"data"`
 		}
 	)
 	defer func() {
 		if len(resp.Data) == 0 {
-			resp.Data = []session.SessionInfo{}
+			resp.Data = []session.Info{}
 		}
 		response.HttpResponse(c, err, resp)
 	}()

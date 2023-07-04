@@ -1,5 +1,5 @@
 server:
-  debug: true
+  debug: false
 
 http_server:
   port: "8000"
@@ -17,23 +17,20 @@ database:
 
 log:
   level: info
-  lumberjack:
-    filename: "./logs/logic.log"
-    max_age: 7
-    max_size: 10
-    max_backups: 5
-    compress: false
-  logstash:
-    host: ""
-    port: "4560"
 
+lumberjack:
+  filename: "./logs/logic.log"
+  max_age: 7
+  max_size: 10
+  max_backups: 5
+  compress: false
 
-comet_server:
-  host: "127.0.0.1"
-  port: "9001"
+logstash:
+  host: ""
+  port: "4560"
 
 session:
-  heartbeat_interval: -1
+  heartbeat_interval: 300
 
 trace:
   sample_rate: 1

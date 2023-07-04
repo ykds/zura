@@ -1,28 +1,35 @@
 package message
 
 import (
-	"context"
 	"encoding/json"
+	"fmt"
+	"github.com/ykds/zura/internal/common"
 	"github.com/ykds/zura/internal/logic/codec"
 	"github.com/ykds/zura/internal/logic/entity"
+	"github.com/ykds/zura/pkg/cache"
 	"github.com/ykds/zura/pkg/errors"
-	"github.com/ykds/zura/proto/comet"
+	"github.com/ykds/zura/pkg/kafka"
+	"github.com/ykds/zura/pkg/log"
+	"github.com/ykds/zura/proto/logic"
+	"github.com/ykds/zura/proto/protocol"
+	"golang.org/x/net/context"
+	"strconv"
 	"time"
 )
 
 type PushMessageRequest struct {
-	SessionId int64  `json:"session_id"`
-	Content   string `json:"content"`
-	Timestamp int64  `json:"timestamp"`
+	SessionKey int64  `json:"session_key"`
+	Content    string `json:"content"`
+	Timestamp  int64  `json:"timestamp"`
 }
 
 type ListMessageRequest struct {
-	SessionId int64 `form:"session_id"`
-	Timestamp int64 `form:"timestamp"`
-	Limit     int   `form:"limit"`
+	SessionKey int64 `form:"session_key"`
+	Timestamp  int64 `form:"timestamp"`
+	Limit      int   `form:"limit"`
 }
 
-type MessageItem struct {
+type Item struct {
 	ID         int64  `json:"id"`
 	UniKey     int64  `json:"uni_key"`
 	SessionId  int64  `json:"session_id"`
@@ -31,10 +38,11 @@ type MessageItem struct {
 	Timestamp  int64  `json:"timestamp"`
 }
 
-func NewMessageService(cometClient comet.CometClient, messageEntity entity.MessageEntity, sessionEntity entity.SessionEntity,
-	groupEntity entity.GroupEntity, friendEntity entity.FriendEntity) MessageService {
+func NewMessageService(cache cache.Cache, kafkaProducer *kafka.Producer, messageEntity entity.MessageEntity, sessionEntity entity.SessionEntity,
+	groupEntity entity.GroupEntity, friendEntity entity.FriendEntity) Service {
 	return &messageService{
-		cometClient:   cometClient,
+		cache:         cache,
+		kafkaProducer: kafkaProducer,
 		messageEntity: messageEntity,
 		sessionEntity: sessionEntity,
 		friendEntity:  friendEntity,
@@ -42,26 +50,27 @@ func NewMessageService(cometClient comet.CometClient, messageEntity entity.Messa
 	}
 }
 
-type MessageService interface {
+type Service interface {
 	PushMessage(userId int64, req PushMessageRequest) error
-	ListNewMessage(userId int64, req ListMessageRequest) ([]MessageItem, error)
-	ListHistoryMessage(userId int64, req ListMessageRequest) ([]MessageItem, error)
+	ListNewMessage(userId int64, req ListMessageRequest) ([]Item, error)
+	ListHistoryMessage(userId int64, req ListMessageRequest) ([]Item, error)
 }
 
 type messageService struct {
-	cometClient   comet.CometClient
+	cache         cache.Cache
+	kafkaProducer *kafka.Producer
 	messageEntity entity.MessageEntity
 	sessionEntity entity.SessionEntity
 	friendEntity  entity.FriendEntity
 	groupEntity   entity.GroupEntity
 }
 
-func (m messageService) ListHistoryMessage(userId int64, req ListMessageRequest) ([]MessageItem, error) {
-	session, err := m.sessionEntity.GetUserSessionById(req.SessionId)
+func (m messageService) ListHistoryMessage(userId int64, req ListMessageRequest) ([]Item, error) {
+	session, err := m.sessionEntity.GetUserSessionById(userId, req.SessionKey)
 	if err != nil {
 		return nil, err
 	}
-	result := make([]MessageItem, 0)
+	result := make([]Item, 0)
 	switch session.SessionType {
 	case entity.PointSession:
 		ok, err := m.friendEntity.IsFriend(userId, session.TargetId)
@@ -76,7 +85,7 @@ func (m messageService) ListHistoryMessage(userId int64, req ListMessageRequest)
 			return nil, err
 		}
 		for _, item := range message {
-			result = append(result, MessageItem{
+			result = append(result, Item{
 				ID:         item.ID,
 				UniKey:     item.Timestamp,
 				SessionId:  session.ID,
@@ -99,7 +108,7 @@ func (m messageService) ListHistoryMessage(userId int64, req ListMessageRequest)
 			return nil, err
 		}
 		for _, item := range message {
-			result = append(result, MessageItem{
+			result = append(result, Item{
 				ID:         item.ID,
 				SessionId:  session.ID,
 				SendUserId: item.UserId,
@@ -117,11 +126,14 @@ func (m messageService) PushMessage(userId int64, req PushMessageRequest) error 
 	if time.Now().UnixMilli()-req.Timestamp > 120000 {
 		return errors.WithStackByCode(codec.IllegalMsgTsCode)
 	}
-	session, err := m.sessionEntity.GetUserSessionById(req.SessionId)
+	session, err := m.sessionEntity.GetUserSessionById(userId, req.SessionKey)
 	if err != nil {
 		return err
 	}
-	var notiUser []int64
+	var (
+		msgId    int64
+		notiUser []int64
+	)
 	switch session.SessionType {
 	case entity.PointSession:
 		ok, err := m.friendEntity.IsFriend(userId, session.TargetId)
@@ -141,6 +153,7 @@ func (m messageService) PushMessage(userId int64, req PushMessageRequest) error 
 		if err != nil {
 			return err
 		}
+		msgId = msg.ID
 		notiUser = []int64{session.TargetId}
 	case entity.GroupSession:
 		ok, err := m.groupEntity.IsGroupMember(session.TargetId, userId)
@@ -164,30 +177,62 @@ func (m messageService) PushMessage(userId int64, req PushMessageRequest) error 
 		if err != nil {
 			return err
 		}
+		msgId = msg.ID
 		for _, item := range members {
 			notiUser = append(notiUser, item.UserId)
 		}
 	default:
 		return errors.WithStackByCode(codec.UnSupportSessionType)
 	}
-	session2, err := m.sessionEntity.GetUserSession(map[string]interface{}{"user_id": session.TargetId, "target_id": userId})
+
+	serverUserMap := make(map[int32][]int64)
+	keys := make([]string, 0)
+	for _, v := range notiUser {
+		keys = append(keys, fmt.Sprintf(common.UserOnlineCacheKey, v))
+	}
+	result, err := m.cache.MGet(context.Background(), keys...)
 	if err != nil {
 		return err
 	}
-	body, _ := json.Marshal(map[string]interface{}{"op": comet.Op_NewMsg, "body": map[string]interface{}{"session_id": session2.ID}})
-	_, err = m.cometClient.PushNotification(context.Background(), &comet.PushNotificationRequest{
-		ToUserId: notiUser,
-		Body:     body,
-	})
-	return err
+	for i := range keys {
+		if result[i] != "" {
+			server, _ := strconv.ParseInt(result[i], 10, 64)
+			serverUserMap[int32(server)] = append(serverUserMap[int32(server)], notiUser[i])
+		}
+	}
+	for k, v := range serverUserMap {
+		body := &logic.PushMsg{
+			Op:       protocol.OpNewMsg,
+			Server:   k,
+			ToUserId: v,
+			Message: &protocol.Message{
+				Id:         msgId,
+				Timestamp:  req.Timestamp,
+				FromUserId: userId,
+				Content:    req.Content,
+			},
+		}
+		marshal, _ := json.Marshal(body)
+		err := m.kafkaProducer.WriteMessage(context.TODO(), strconv.FormatInt(session.SessionKey, 10), marshal)
+		if err != nil {
+			log.Errorf("push msg error: %v", err)
+		}
+	}
+	return nil
 }
 
-func (m messageService) ListNewMessage(userId int64, req ListMessageRequest) ([]MessageItem, error) {
-	session, err := m.sessionEntity.GetUserSessionById(req.SessionId)
+type PushMessageBody struct {
+	ToUserId []int64                `json:"to_user_id"`
+	Op       int32                  `json:"op"`
+	Body     map[string]interface{} `json:"body"`
+}
+
+func (m messageService) ListNewMessage(userId int64, req ListMessageRequest) ([]Item, error) {
+	session, err := m.sessionEntity.GetUserSessionById(userId, req.SessionKey)
 	if err != nil {
 		return nil, err
 	}
-	result := make([]MessageItem, 0)
+	result := make([]Item, 0)
 	switch session.SessionType {
 	case entity.PointSession:
 		ok, err := m.friendEntity.IsFriend(userId, session.TargetId)
@@ -202,7 +247,7 @@ func (m messageService) ListNewMessage(userId int64, req ListMessageRequest) ([]
 			return nil, err
 		}
 		for _, item := range message {
-			result = append(result, MessageItem{
+			result = append(result, Item{
 				ID:         item.ID,
 				UniKey:     item.Timestamp,
 				SessionId:  session.ID,
@@ -225,7 +270,7 @@ func (m messageService) ListNewMessage(userId int64, req ListMessageRequest) ([]
 			return nil, err
 		}
 		for _, item := range message {
-			result = append(result, MessageItem{
+			result = append(result, Item{
 				ID:         item.ID,
 				SessionId:  session.ID,
 				SendUserId: item.UserId,

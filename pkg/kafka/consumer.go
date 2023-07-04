@@ -2,8 +2,10 @@ package kafka
 
 import (
 	"context"
+	"fmt"
 	"github.com/segmentio/kafka-go"
 	"github.com/ykds/zura/pkg/log"
+	"os"
 	"time"
 )
 
@@ -34,11 +36,15 @@ func (k *Kafka) NewConsumer(groupId string, topic []string, consume ConsumerHand
 	for _, o := range opts {
 		o(&c)
 	}
-	return &Customer{
+	con := &Customer{
 		l:       k.l,
 		r:       kafka.NewReader(c),
 		consume: consume,
 	}
+	k.m.Lock()
+	defer k.m.Unlock()
+	k.consumers = append(k.consumers, con)
+	return con
 }
 
 type Customer struct {
@@ -59,6 +65,8 @@ func (c *Customer) Run(ctx context.Context) {
 		if err != nil {
 			if c.l != nil {
 				c.l.Error(err)
+			} else {
+				_, _ = fmt.Fprintf(os.Stderr, fmt.Sprintf("%+v", err))
 			}
 		}
 		err = c.r.CommitMessages(ctx, message)
@@ -72,4 +80,8 @@ func (c *Customer) Run(ctx context.Context) {
 			return
 		}
 	}
+}
+
+func (c *Customer) Close() error {
+	return c.r.Close()
 }

@@ -2,11 +2,10 @@ package zap
 
 import (
 	"github.com/ykds/zura/pkg/log"
-	"io"
-	"os"
-
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	"io"
+	"os"
 )
 
 type logger struct {
@@ -65,7 +64,7 @@ func NewLogger(cfg log.Config, opts ...Option) log.Logger {
 
 	if lg.debug {
 		level = zap.DebugLevel
-		lg.outs = append(lg.outs, os.Stdout)
+		lg.outs = []io.Writer{os.Stdout}
 	}
 
 	encoderConfig := zap.NewProductionEncoderConfig()
